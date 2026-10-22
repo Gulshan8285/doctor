@@ -6,7 +6,10 @@ import { UserRole } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'doctor_prescription_system_super_secure_jwt_secret_key_2026_antigravity';
 const SECRET_KEY = new TextEncoder().encode(JWT_SECRET);
-export const COOKIE_NAME = 'doctor_auth_session';
+export const COOKIE_NAME = 'doctor_auth_session'; // legacy alias
+export const DOCTOR_COOKIE = 'doctor_auth_session';
+export const ADMIN_COOKIE = 'admin_auth_session';
+export const LEGACY_COOKIE = 'doctor_auth_session';
 
 export interface SessionPayload {
   userId: string;
@@ -46,74 +49,63 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
 
 import { cache } from 'react';
 
-/**
- * Gets the verified authenticated user for the current server context.
- * Performs database check to enforce immediate access revocation for suspended accounts
- * or revoked delegated staff.
- * Cached per request to eliminate redundant round-trips to the database.
- */
+async function validatePayload(payload: SessionPayload | null): Promise<SessionPayload | null> {
+  if (!payload || !payload.userId) return null;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { id: true, status: true, role: true, organizationId: true, fullName: true, email: true },
+  });
+  if (!dbUser || dbUser.status !== 'ACTIVE') return null;
+  let delegatedDoctorId: string | null = null;
+  let permissions: string[] = [];
+  if (dbUser.role === 'DELEGATED_STAFF') {
+    const activeGrant = await prisma.delegatedAccess.findFirst({ where: { staffUserId: dbUser.id, status: 'ACTIVE' } });
+    if (!activeGrant) return null;
+    delegatedDoctorId = activeGrant.doctorId;
+    try { permissions = JSON.parse(activeGrant.permissions); } catch { permissions = []; }
+  }
+  return { userId: dbUser.id, email: dbUser.email, fullName: dbUser.fullName, role: dbUser.role, organizationId: dbUser.organizationId, delegatedDoctorId, permissions };
+}
+
+async function getSessionFromCookie(cookieName: string): Promise<SessionPayload | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(cookieName)?.value;
+    if (!token) return null;
+    const payload = await verifySession(token);
+    return validatePayload(payload);
+  } catch (e) { console.error('verify ' + cookieName, e); return null; }
+}
+
+export const getDoctorSession = cache(async function getDoctorSession(): Promise<SessionPayload | null> {
+  const s = await getSessionFromCookie(DOCTOR_COOKIE);
+  if (s && (s.role === 'DOCTOR' || s.role === 'DELEGATED_STAFF')) return s;
+  return null;
+});
+
+export const getAdminSession = cache(async function getAdminSession(): Promise<SessionPayload | null> {
+  const s = await getSessionFromCookie(ADMIN_COOKIE);
+  if (s && (s.role === 'ADMIN' || s.role === 'SUPER_ADMIN')) return s;
+  if (!s) {
+    const leg = await getSessionFromCookie(LEGACY_COOKIE);
+    if (leg && (leg.role === 'ADMIN' || leg.role === 'SUPER_ADMIN')) return leg;
+  }
+  return s && (s.role === 'ADMIN' || s.role === 'SUPER_ADMIN') ? s : null;
+});
+
 export const getCurrentUser = cache(async function getCurrentUser(): Promise<SessionPayload | null> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get(COOKIE_NAME)?.value;
-    if (!token) return null;
-
-    const payload = await verifySession(token);
-    if (!payload || !payload.userId) return null;
-
-    // Check account status in DB
-    const dbUser = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: {
-        id: true,
-        status: true,
-        role: true,
-        organizationId: true,
-        fullName: true,
-        email: true,
-      },
-    });
-
-    if (!dbUser || dbUser.status !== 'ACTIVE') {
-      return null;
-    }
-
-    // If user is DELEGATED_STAFF, verify active delegation grant
-    let delegatedDoctorId: string | null = null;
-    let permissions: string[] = [];
-
-    if (dbUser.role === 'DELEGATED_STAFF') {
-      const activeGrant = await prisma.delegatedAccess.findFirst({
-        where: {
-          staffUserId: dbUser.id,
-          status: 'ACTIVE',
-        },
-      });
-
-      // Immediate revocation: If delegation is missing or revoked, staff has no access
-      if (!activeGrant) {
-        return null;
-      }
-
-      delegatedDoctorId = activeGrant.doctorId;
-      try {
-        permissions = JSON.parse(activeGrant.permissions);
-      } catch {
-        permissions = [];
-      }
-    }
-
-    return {
-      userId: dbUser.id,
-      email: dbUser.email,
-      fullName: dbUser.fullName,
-      role: dbUser.role,
-      organizationId: dbUser.organizationId,
-      delegatedDoctorId,
-      permissions,
-    };
-  } catch (error) {
-    console.error('Error verifying current user:', error);
+    const doctorToken = cookieStore.get(DOCTOR_COOKIE)?.value;
+    if (doctorToken) { const p = await verifySession(doctorToken); const v = await validatePayload(p); if (v) return v; }
+    const adminToken = cookieStore.get(ADMIN_COOKIE)?.value;
+    if (adminToken) { const p = await verifySession(adminToken); const v = await validatePayload(p); if (v) return v; }
     return null;
-  }
+  } catch (error) { console.error('Error verifying current user:', error); return null; }
 });
+
+export function cookieNameForRole(role: UserRole): string {
+  if (role === 'DOCTOR' || role === 'DELEGATED_STAFF') return DOCTOR_COOKIE;
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') return ADMIN_COOKIE;
+  return DOCTOR_COOKIE;
+}

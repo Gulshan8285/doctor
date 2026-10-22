@@ -45,10 +45,12 @@ export function Header({ userName, userEmail, userRole, notifications = [] }: He
     setIsLoggingOut(true);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/login');
+      const target = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' ? '/admin/login' : userRole === 'DELEGATED_STAFF' ? '/login' : '/doctor/login';
+      router.push(target);
       router.refresh();
     } catch {
-      router.push('/login');
+      const target = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' ? '/admin/login' : '/doctor/login';
+      router.push(target);
     }
   };
 

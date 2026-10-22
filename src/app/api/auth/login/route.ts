@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { comparePassword, signSession, COOKIE_NAME } from '@/lib/auth';
+import { comparePassword, signSession, cookieNameForRole } from '@/lib/auth';
 import { loginSchema } from '@/lib/validations';
 import { logAuditEvent } from '@/lib/audit';
 
@@ -193,9 +193,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Set secure HTTP-only cookie
+    // Set secure HTTP-only cookie - use role-specific cookie to avoid cross-panel logout
     response.cookies.set({
-      name: COOKIE_NAME,
+      name: cookieNameForRole(user.role),
       value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

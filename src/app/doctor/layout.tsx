@@ -1,7 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { getCurrentUser } from '@/lib/auth';
+import { getDoctorSession, getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
@@ -20,7 +20,7 @@ export default async function DoctorLayout({
     return <>{children}</>;
   }
 
-  const user = await getCurrentUser();
+  const user = (await getDoctorSession()) || (await getCurrentUser());
 
   if (!user || (user.role !== 'DOCTOR' && user.role !== 'DELEGATED_STAFF')) {
     redirect('/doctor/login');
