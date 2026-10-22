@@ -116,45 +116,52 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
-      <div className="sm:mx-auto sm:w-full sm:max-w-xl">
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
+      {/* Decorative ambient background glows */}
+      <div className="absolute top-0 -left-20 w-96 h-96 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 -right-20 w-96 h-96 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
         {/* Brand header */}
         <div className="flex justify-center">
-          <div className="w-14 h-14 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/20">
-            <Stethoscope className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-xl shadow-teal-600/25 border border-teal-400/30">
+            <Stethoscope className="w-9 h-9" />
           </div>
         </div>
         <h2 className="mt-4 text-center text-3xl font-extrabold tracking-tight text-slate-900">
           DoctorCare Platform
         </h2>
-        <p className="mt-1 text-center text-sm text-slate-600 max-w-md mx-auto">
-          Doctor Prescriptions & Patient Management System
+        <p className="mt-1 text-center text-sm font-medium text-slate-600 max-w-md mx-auto">
+          Enterprise Doctor Prescriptions & Patient Management System
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
         {/* Status notices */}
         {errorMessage && (
-          <div className="mb-4 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-700">
+          <div className="mb-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-700 shadow-xs">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {successNotice && (
-          <div className="mb-4 p-4 rounded-xl bg-teal-50 border border-teal-200 flex items-start gap-2.5 text-xs text-teal-800">
+          <div className="mb-4 p-4 rounded-2xl bg-teal-50 border border-teal-200 flex items-start gap-2.5 text-xs text-teal-800 shadow-xs">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-teal-600" />
             <span>{successNotice}</span>
           </div>
         )}
 
         {/* 1-CLICK DEMO LOGIN CARDS (ADMIN VS DOCTOR) */}
-        <div className="mb-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200/90">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Instant 1-Click Demo Login (Select Role)
-            </h3>
+        <div className="mb-6 bg-white/95 backdrop-blur-md p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200/90">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Instant 1-Click Role Login
+              </h3>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-400">Demo Ready</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -163,26 +170,30 @@ export default function LoginPage() {
               type="button"
               disabled={isLoading}
               onClick={() => handleQuickLogin('admin@apollo.org')}
-              className="text-left p-4 rounded-xl border-2 border-indigo-200 hover:border-indigo-500 bg-gradient-to-br from-indigo-50/60 to-white hover:shadow-md transition-all group flex flex-col justify-between"
+              className="card-hover-lift text-left p-5 rounded-2xl border-2 border-indigo-200 hover:border-indigo-500 bg-gradient-to-br from-indigo-50/70 via-white to-indigo-50/30 hover:shadow-lg hover:shadow-indigo-500/10 transition-all group flex flex-col justify-between cursor-pointer relative overflow-hidden"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform">
                     <Building2 className="w-5 h-5" />
                   </div>
-                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                    Main Portal
+                  <span className="px-2.5 py-0.5 bg-indigo-100 border border-indigo-200 text-indigo-800 text-[10px] font-extrabold rounded-full uppercase tracking-wider">
+                    Company Admin
                   </span>
                 </div>
-                <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                  Company Admin
+                <h4 className="text-base font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  Hospital Admin
                 </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  The primary hospital/company portal. Add & update doctors, toggle access, and view all reports.
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Hospital management deck. Provision doctors, toggle access, and inspect all diagnostic uploads.
                 </p>
+                <div className="mt-3 inline-block px-2 py-0.5 bg-white rounded border border-indigo-100 text-[11px] font-mono text-indigo-700">
+                  admin@apollo.org
+                </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-indigo-100/80 flex items-center justify-between text-xs font-semibold text-indigo-700">
-                <span>Enter as Admin</span>
+              <div className="mt-4 pt-3 border-t border-indigo-100 flex items-center justify-between text-xs font-bold text-indigo-700">
+                <span>Enter Admin Console</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
@@ -192,26 +203,30 @@ export default function LoginPage() {
               type="button"
               disabled={isLoading}
               onClick={() => handleQuickLogin('dr.sharma@apollo.org')}
-              className="text-left p-4 rounded-xl border-2 border-teal-200 hover:border-teal-500 bg-gradient-to-br from-teal-50/60 to-white hover:shadow-md transition-all group flex flex-col justify-between"
+              className="card-hover-lift text-left p-5 rounded-2xl border-2 border-teal-200 hover:border-teal-500 bg-gradient-to-br from-teal-50/70 via-white to-teal-50/30 hover:shadow-lg hover:shadow-teal-500/10 transition-all group flex flex-col justify-between cursor-pointer relative overflow-hidden"
             >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 to-emerald-400" />
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-11 h-11 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-md shadow-teal-600/30 group-hover:scale-105 transition-transform">
                     <Stethoscope className="w-5 h-5" />
                   </div>
-                  <span className="px-2 py-0.5 bg-teal-100 text-teal-800 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                    Doctor
+                  <span className="px-2.5 py-0.5 bg-teal-100 border border-teal-200 text-teal-800 text-[10px] font-extrabold rounded-full uppercase tracking-wider">
+                    Doctor Portal
                   </span>
                 </div>
-                <h4 className="text-base font-bold text-slate-900 group-hover:text-teal-600 transition-colors">
-                  Doctor Portal
+                <h4 className="text-base font-extrabold text-slate-900 group-hover:text-teal-600 transition-colors">
+                  Doctor Clinic
                 </h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  Doctor workspace. Upload prescriptions, manage patients, and grant staff access from the top corner menu.
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  Doctor clinical workspace. Upload verified prescriptions, manage patients, and configure team delegation.
                 </p>
+                <div className="mt-3 inline-block px-2 py-0.5 bg-white rounded border border-teal-100 text-[11px] font-mono text-teal-700">
+                  dr.sharma@apollo.org
+                </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-teal-100/80 flex items-center justify-between text-xs font-semibold text-teal-700">
-                <span>Enter as Doctor</span>
+              <div className="mt-4 pt-3 border-t border-teal-100 flex items-center justify-between text-xs font-bold text-teal-700">
+                <span>Enter Doctor Clinic</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
@@ -219,12 +234,12 @@ export default function LoginPage() {
 
           {/* Secondary Quick Login: Staff / Assistant */}
           <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs text-slate-500">Need to test subordinate staff?</span>
+            <span className="text-xs text-slate-500 font-medium">Testing subordinate staff role?</span>
             <button
               type="button"
               disabled={isLoading}
               onClick={() => handleQuickLogin('staff.priya@apollo.org')}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-xs font-semibold text-purple-700 transition-colors inline-flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-xs font-semibold text-purple-700 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Users className="w-3.5 h-3.5" />
               <span>Login as Clinical Assistant (Priya Nair)</span>

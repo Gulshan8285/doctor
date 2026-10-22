@@ -71,45 +71,59 @@ export default function DoctorLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
+      {/* Decorative ambient background glows */}
+      <div className="absolute top-0 -left-20 w-96 h-96 rounded-full bg-teal-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 -right-20 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center">
-          <div className="w-14 h-14 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/20">
-            <Stethoscope className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-xl shadow-teal-600/25 border border-teal-400/30">
+            <Stethoscope className="w-9 h-9" />
           </div>
         </div>
-        <h2 className="mt-4 text-center text-2xl font-bold tracking-tight text-slate-900">
-          Doctor Portal Login
+        <h2 className="mt-4 text-center text-3xl font-extrabold tracking-tight text-slate-900">
+          Doctor Clinical Login
         </h2>
-        <p className="mt-1 text-center text-xs text-slate-500">
-          Dedicated clinical workspace for physicians
+        <p className="mt-1 text-center text-xs font-medium text-slate-500">
+          Dedicated Clinical Workspace for Attending Physicians & Specialists
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 sm:px-10 shadow-sm rounded-2xl border border-slate-200">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-white/95 backdrop-blur-md py-8 px-6 sm:px-10 shadow-sm rounded-3xl border border-slate-200/90 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 to-emerald-400" />
+
           {errorMessage && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2 text-xs text-rose-700">
+            <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2 text-xs text-rose-700 shadow-xs">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {/* Quick Demo 1-Click for Doctor */}
-          <div className="mb-6 p-4 rounded-xl bg-teal-50/70 border border-teal-200/80">
-            <p className="text-xs font-bold text-teal-900 mb-2 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-teal-600" />
-              <span>Fast Demo Evaluation</span>
+          <div className="mb-6 p-4 rounded-2xl bg-teal-50/80 border border-teal-200/90 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                <span>Instant Evaluation Access</span>
+              </p>
+              <span className="text-[10px] font-mono text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded-full font-bold">
+                1-Click
+              </span>
+            </div>
+            <p className="text-[11px] text-teal-800/80 mb-3">
+              Logs in as verified lead clinician <strong>Dr. Rajesh Sharma</strong> (Cardiology).
             </p>
             <Button
               type="button"
               variant="primary"
               size="md"
-              className="w-full text-xs"
+              className="w-full text-xs font-bold shadow-md shadow-teal-600/20 cursor-pointer"
               isLoading={isLoading}
               onClick={handleQuickDoctorLogin}
             >
-              1-Click Login: Dr. Rajesh Sharma
+              1-Click Login: Dr. Rajesh Sharma &rarr;
             </Button>
           </div>
 
@@ -128,7 +142,7 @@ export default function DoctorLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="doctor@hospital.org"
-                  className="block w-full rounded-lg border border-slate-300 pl-10 pr-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  className="block w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
               </div>
             </div>
@@ -147,7 +161,7 @@ export default function DoctorLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="block w-full rounded-lg border border-slate-300 pl-10 pr-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  className="block w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
               </div>
             </div>
@@ -156,7 +170,7 @@ export default function DoctorLoginPage() {
               type="submit"
               variant="primary"
               size="lg"
-              className="w-full mt-2"
+              className="w-full mt-2 font-bold cursor-pointer"
               isLoading={isLoading}
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
@@ -164,12 +178,18 @@ export default function DoctorLoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col items-center gap-2 text-center">
             <a
               href="/admin/login"
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline"
             >
               Are you a Company Admin? Click here to Admin Login &rarr;
+            </a>
+            <a
+              href="/login"
+              className="text-[11px] text-slate-400 hover:text-slate-600 hover:underline"
+            >
+              Unified Hub (Choose role)
             </a>
           </div>
         </div>
