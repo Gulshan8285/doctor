@@ -1,11 +1,14 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ShieldCheck, Database, HardDrive, KeyRound, Lock } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function SuperAdminSettingsPage() {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
   if (!user || user.role !== 'SUPER_ADMIN') {
     redirect('/login');
   }

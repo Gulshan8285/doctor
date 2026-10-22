@@ -1,18 +1,22 @@
 import React from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getDoctorSession, getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { verifyPatientAccess } from '@/lib/permissions';
 import PatientProfileClient from './patient-profile-client';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function PatientProfilePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await getCurrentUser();
+  // Allow doctor/staff or admin to view patient depending on ownership
+  let user = await getDoctorSession();
+  if (!user) user = await getAdminSession();
+  if (!user) redirect('/doctor/login');
   if (!user) redirect('/doctor/login');
 
   const { id } = await params;

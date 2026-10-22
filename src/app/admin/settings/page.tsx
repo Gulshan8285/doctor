@@ -1,13 +1,16 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, Building2, Lock } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function AdminSettingsPage() {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
     redirect('/admin/login');
   }

@@ -1,13 +1,14 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getDoctorSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import ReportsClient from './reports-client';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function ReportsPage() {
-  const user = await getCurrentUser();
+  const user = await getDoctorSession();
   if (!user) redirect('/doctor/login');
 
   const targetDoctorId = user.role === 'DOCTOR' ? user.userId : user.delegatedDoctorId;

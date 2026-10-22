@@ -1,11 +1,14 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import PharmacyClient from '@/app/doctor/pharmacy/pharmacy-client';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function AdminPharmacyPage() {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
     redirect('/admin/login');
   }

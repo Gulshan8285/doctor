@@ -1,5 +1,5 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getDoctorSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -9,8 +9,11 @@ import Link from 'next/link';
 import { Users, FileText, Search, ShieldCheck, Plus, Upload } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function StaffWorkspacePage() {
-  const user = await getCurrentUser();
+  const user = await getDoctorSession();
   if (!user || user.role !== 'DELEGATED_STAFF') {
     redirect('/login');
   }

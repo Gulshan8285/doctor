@@ -1,5 +1,5 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -7,8 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 import { Users, ShieldCheck } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function SuperAdminUsersPage() {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
   if (!user || user.role !== 'SUPER_ADMIN') {
     redirect('/login');
   }
