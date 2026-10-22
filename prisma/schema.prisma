@@ -1,0 +1,352 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  DOCTOR
+  DELEGATED_STAFF
+}
+
+enum AccountStatus {
+  ACTIVE
+  DEACTIVATED
+  PENDING_INVITE
+}
+
+enum DelegationStatus {
+  ACTIVE
+  PENDING
+  REVOKED
+}
+
+enum DocumentCategory {
+  PRESCRIPTION
+  LAB_REPORT
+  REFERRAL_LETTER
+  DIAGNOSTIC_IMAGING
+  DISCHARGE_SUMMARY
+}
+
+enum ConnectionType {
+  DIRECTORY_LINK
+  API_INTEGRATED
+  NOT_CONNECTED
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_SUCCESS
+  PATIENT_CREATE
+  PATIENT_UPDATE
+  DOCUMENT_UPLOAD
+  DOCUMENT_PREVIEW
+  DOCUMENT_DOWNLOAD
+  DOCUMENT_VERSION_ADDENDUM
+  DELEGATE_INVITED
+  DELEGATE_ACCEPTED
+  DELEGATE_PERMISSIONS_UPDATED
+  DELEGATE_REVOKED
+  REPORT_GENERATED
+  DATA_EXPORTED
+  ORGANIZATION_CREATED
+  ORGANIZATION_UPDATED
+  USER_STATUS_CHANGED
+  PHARMACY_PREFERENCE_UPDATED
+  EMERGENCY_ACCESS_BREAK_GLASS
+}
+
+model Organization {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  licenseNumber String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  country       String   @default("India")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users         User[]
+  patients      Patient[]
+  documents     PrescriptionDocument[]
+  auditEvents   AuditEvent[]
+
+  @@index([slug])
+}
+
+model User {
+  id              String        @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  email           String        @unique
+  passwordHash    String
+  fullName        String
+  phone           String?
+  role            UserRole      @default(DOCTOR)
+  status          AccountStatus @default(ACTIVE)
+  
+  mfaEnabled      Boolean       @default(false)
+  failedAttempts  Int           @default(0)
+  lastLoginAt     DateTime?
+  
+  invitationToken String?       @unique
+  invitationExpiresAt DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relationships
+  doctorProfile           DoctorProfile?
+  delegatedAccessGranted  DelegatedAccess[] @relation("GrantingDoctor")
+  delegatedAccessReceived DelegatedAccess[] @relation("DelegatedStaffUser")
+  
+  patientsCreated         Patient[]         @relation("DoctorPatients")
+  documentsUploaded       PrescriptionDocument[] @relation("UploadedDocuments")
+  doctorDocuments         PrescriptionDocument[] @relation("DoctorDocuments")
+  auditEvents             AuditEvent[]
+  notifications           Notification[]
+  versionsCreated         DocumentVersion[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model DoctorProfile {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  specialization      String   @default("General Physician")
+  registrationNumber  String?  // Medical Council Registration Number
+  clinicName          String?
+  clinicAddress       String?
+  maxDelegates        Int      @default(3)
+  
+  preferredPharmacyId String?
+  preferredPharmacy   PharmacyProvider? @relation(fields: [preferredPharmacyId], references: [id], onDelete: SetNull)
+  pharmacyNotes       String?
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model DelegatedAccess {
+  id             String           @id @default(uuid())
+  doctorId       String
+  grantingDoctor User             @relation("GrantingDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  staffUserId    String?
+  staffUser      User?            @relation("DelegatedStaffUser", fields: [staffUserId], references: [id], onDelete: SetNull)
+  
+  invitedEmail   String
+  invitedName    String?
+  status         DelegationStatus @default(PENDING)
+  
+  // JSON array of strings e.g. ["VIEW_PATIENTS", "SEARCH_PATIENTS", "UPLOAD_DOCUMENTS", "VIEW_PRESCRIPTIONS", "DOWNLOAD_PRESCRIPTIONS"]
+  permissions    String           @default("[\"VIEW_PATIENTS\",\"SEARCH_PATIENTS\",\"UPLOAD_DOCUMENTS\",\"VIEW_PRESCRIPTIONS\",\"DOWNLOAD_PRESCRIPTIONS\"]")
+  
+  token          String?          @unique
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  revokedReason  String?
+  
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([doctorId])
+  @@index([staffUserId])
+  @@index([invitedEmail])
+  @@index([status])
+}
+
+model Patient {
+  id                    String        @id @default(uuid())
+  patientCode           String        @unique // e.g. PAT-202610-001
+  organizationId        String
+  organization          Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  doctorId              String
+  doctor                User          @relation("DoctorPatients", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  fullName              String
+  phone                 String
+  normalizedPhone       String
+  email                 String?
+  dob                   DateTime?
+  gender                String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  consentAcknowledged   Boolean       @default(true)
+  nonClinicalNotes      String?
+  diagnosticLab         String?       @default("Dr Lal PathLabs")
+  
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  documents             PrescriptionDocument[]
+
+  @@index([organizationId])
+  @@index([doctorId])
+  @@index([fullName])
+  @@index([normalizedPhone])
+  @@index([email])
+  @@index([patientCode])
+  @@index([diagnosticLab])
+  @@index([createdAt])
+}
+
+model PrescriptionDocument {
+  id               String           @id @default(uuid())
+  patientId        String
+  patient          Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId         String
+  doctor           User             @relation("DoctorDocuments", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  organizationId   String
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  uploadedById     String
+  uploadedBy       User             @relation("UploadedDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
+  
+  title            String
+  category         DocumentCategory @default(PRESCRIPTION)
+  documentDate     DateTime         @default(now())
+  diagnosticLab    String?          @default("Dr Lal PathLabs")
+  
+  storageKey       String           // Private storage location
+  fileHash         String           // SHA-256 hash for integrity
+  fileSize         Int              // in bytes
+  mimeType         String
+  originalFilename String
+  
+  isFinalized      Boolean          @default(true) // Finalized documents cannot be edited/overwritten
+  currentVersion   Int              @default(1)
+  
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  versions         DocumentVersion[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([organizationId])
+  @@index([category])
+  @@index([diagnosticLab])
+  @@index([documentDate])
+  @@index([createdAt])
+}
+
+model DocumentVersion {
+  id                  String               @id @default(uuid())
+  documentId          String
+  document            PrescriptionDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  versionNumber       Int
+  storageKey          String
+  fileHash            String
+  fileSize            Int
+  mimeType            String
+  originalFilename    String
+  reasonForCorrection String
+  
+  createdById         String
+  createdBy           User                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  
+  createdAt           DateTime             @default(now())
+
+  @@index([documentId])
+  @@index([versionNumber])
+}
+
+model PharmacyProvider {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  slug           String          @unique
+  logoUrl        String?
+  website        String
+  description    String?
+  serviceRegion  String          @default("Pan-India")
+  connectionType ConnectionType  @default(DIRECTORY_LINK)
+  isActive       Boolean         @default(true)
+  apiNotes       String?
+  
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  doctorProfiles DoctorProfile[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model AuditEvent {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action         AuditAction
+  resourceType   String        // e.g. "PATIENT", "DOCUMENT", "USER", "DELEGATE"
+  resourceId     String?
+  
+  ipAddress      String?
+  userAgent      String?
+  metadata       String?       // JSON metadata e.g. record counts, filter queries
+  
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, SUCCESS, SECURITY
+  isRead    Boolean  @default(false)
+  linkUrl   String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
+}
