@@ -1,18 +1,24 @@
 # 📋 DoctorCare Pro — System Credentials & Direct Links Quick Reference
 
 This document contains all direct login URLs, passwords, roles, and instructions for client demonstrations and administrative access.
+Deployed on Vercel under account **`gulshanyadav62000`** with real cloud PostgreSQL (Neon).
 
 ---
 
-## 🌐 1. Direct Portal Access Links
+## 🌐 1. Live Deployment & Direct Portal Access Links
+
+- **Main Production Web Application**: [https://doctor-portal-rho.vercel.app](https://doctor-portal-rho.vercel.app)
+- **GitHub Repository**: [https://github.com/Gulshan8285/doctor](https://github.com/Gulshan8285/doctor)
 
 ### 🩺 Doctor Portal (Exclusive Doctor Sign-In)
-- **URL**: [http://localhost:3000/doctor/login](http://localhost:3000/doctor/login)
+- **Production URL**: [https://doctor-portal-rho.vercel.app/doctor/login](https://doctor-portal-rho.vercel.app/doctor/login)
+- **Local URL**: [http://localhost:3000/doctor/login](http://localhost:3000/doctor/login)
 - **Purpose**: Direct login for doctors and clinical assistants without any admin clutter.
 - **Demo Quick Access**: Click the prominent **"Quick Doctor Login (Dr. Sharma)"** button to enter immediately.
 
 ### 🏢 Company Admin Portal (Exclusive Admin Sign-In)
-- **URL**: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
+- **Production URL**: [https://doctor-portal-rho.vercel.app/admin/login](https://doctor-portal-rho.vercel.app/admin/login)
+- **Local URL**: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
 - **Purpose**: Direct login for hospital/clinic administrators to view doctors, prescriptions, analytics, and audit logs.
 - **Demo Quick Access**: Click the prominent **"Quick Admin Login"** button to enter immediately.
 

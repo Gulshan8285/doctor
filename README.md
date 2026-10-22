@@ -4,6 +4,14 @@ A production-ready healthcare SaaS platform built with Next.js App Router, TypeS
 
 ---
 
+## 🌐 Live Production Deployment on Vercel
+
+- **Live URL**: [https://doctor-portal-rho.vercel.app](https://doctor-portal-rho.vercel.app)
+- **GitHub Repository**: [https://github.com/Gulshan8285/doctor](https://github.com/Gulshan8285/doctor)
+- **Vercel Project**: `gulshanyadav62000-2508s-projects / doctor-portal`
+
+---
+
 ## 🔑 Dedicated Portal Links & Demo Credentials
 
 Each role has a dedicated direct link to avoid any role confusion:
