@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/doctor/login');
 
   const targetDoctorId = user.role === 'DOCTOR' ? user.userId : user.delegatedDoctorId;
 

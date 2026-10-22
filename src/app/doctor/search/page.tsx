@@ -81,11 +81,11 @@ export default function AdvancedSearchPage() {
     }
   }, [query, dateFilter, customStart, customEnd]);
 
-  // Debounced search on query or filter changes
+  // Debounced search on query or filter changes (ultra fast 100ms)
   useEffect(() => {
     const timer = setTimeout(() => {
       performSearch();
-    }, 350);
+    }, 100);
     return () => clearTimeout(timer);
   }, [performSearch]);
 
@@ -246,8 +246,16 @@ export default function AdvancedSearchPage() {
                       <td className="py-3.5 px-4 text-slate-500">
                         {pat.email || 'N/A'}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {formatDate(pat.createdAt)}
+                      <td className="py-3.5 px-4 text-slate-700">
+                        <div className="font-semibold text-slate-800">{formatDate(pat.createdAt)}</div>
+                        <div className="text-[10px] font-mono text-teal-700 font-medium">
+                          {new Date(pat.createdAt).toLocaleTimeString('en-IN', {
+                            hour12: true,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <Badge variant={pat.documentCount > 0 ? 'teal' : 'slate'}>
@@ -258,7 +266,7 @@ export default function AdvancedSearchPage() {
                         className="py-3.5 px-4 text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Link href={`/doctor/patients/${pat.id}`}>
+                        <Link href={`/doctor/patients/${pat.id}`} prefetch={true}>
                           <Button
                             variant="outline"
                             size="sm"

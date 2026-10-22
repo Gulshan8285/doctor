@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function TeamAccessPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/doctor/login');
 
   if (user.role !== 'DOCTOR') {
     redirect('/doctor');

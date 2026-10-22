@@ -11,10 +11,12 @@ import {
   Search,
   ShieldAlert,
   Info,
+  Plus,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/ui/toast';
 
 interface ProviderItem {
@@ -47,6 +49,7 @@ export default function PharmacyClient({
   const router = useRouter();
   const { toast } = useToast();
 
+  const [providerList, setProviderList] = useState<ProviderItem[]>(providers);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProviderId, setSelectedProviderId] = useState<string>(
     currentPreference?.providerId || ''
@@ -54,11 +57,70 @@ export default function PharmacyClient({
   const [notes, setNotes] = useState(currentPreference?.notes || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  const filteredProviders = providers.filter(
+  // Add Partner Modal state (Admin feature requested)
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+  const [newPharmacy, setNewPharmacy] = useState({
+    name: '',
+    website: '',
+    description: '',
+    serviceRegion: 'Pan-India',
+    connectionType: 'API_INTEGRATED',
+  });
+
+  React.useEffect(() => {
+    setProviderList(providers);
+  }, [providers]);
+
+  const filteredProviders = providerList.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleAddPharmacy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPharmacy.name.trim()) return;
+
+    setIsSubmittingAdd(true);
+    try {
+      const res = await fetch('/api/pharmacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPharmacy),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: 'Failed to Add Partner', description: data.error, type: 'error' });
+        return;
+      }
+
+      toast({
+        title: 'Partner Added to Catalog',
+        description: data.message,
+        type: 'success',
+      });
+
+      if (data.provider) {
+        setProviderList((prev) => [data.provider, ...prev]);
+      }
+
+      setIsAddOpen(false);
+      setNewPharmacy({
+        name: '',
+        website: '',
+        description: '',
+        serviceRegion: 'Pan-India',
+        connectionType: 'API_INTEGRATED',
+      });
+      router.refresh();
+    } catch {
+      toast({ title: 'Error', description: 'Could not connect to server', type: 'error' });
+    } finally {
+      setIsSubmittingAdd(false);
+    }
+  };
 
   const handleSavePreference = async (providerId: string) => {
     setIsSaving(true);
@@ -115,13 +177,27 @@ export default function PharmacyClient({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-          Pharmacy & Medical Service Providers
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Select and configure your preferred pharmacy partner for patient home delivery referrals.
-        </p>
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            Pharmacy &amp; Medical Service Providers
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Select and configure your preferred pharmacy partner for patient home delivery referrals.
+          </p>
+        </div>
+
+        {(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && (
+          <Button
+            variant="primary"
+            size="md"
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setIsAddOpen(true)}
+            className="cursor-pointer bg-teal-600 hover:bg-teal-700 text-white font-bold"
+          >
+            + Add Pharmacy Partner
+          </Button>
+        )}
       </div>
 
       {/* Mandatory Regulatory Transparency Notice */}
@@ -236,6 +312,89 @@ export default function PharmacyClient({
           );
         })}
       </div>
+
+      {/* Add Pharmacy Partner Modal (Admin) */}
+      <Modal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Add Pharmacy Partner to Catalog"
+        description="Add a verified online pharmacy or local medical supplier. It will be immediately available to all clinic doctors."
+        maxWidth="md"
+      >
+        <form onSubmit={handleAddPharmacy} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Pharmacy Partner Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={newPharmacy.name}
+              onChange={(e) => setNewPharmacy({ ...newPharmacy, name: e.target.value })}
+              placeholder="e.g. Apollo Pharmacy 24|7"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Official Website / Order Portal URL
+            </label>
+            <input
+              type="url"
+              value={newPharmacy.website}
+              onChange={(e) => setNewPharmacy({ ...newPharmacy, website: e.target.value })}
+              placeholder="e.g. https://www.apollopharmacy.in"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Service Coverage Region
+            </label>
+            <input
+              type="text"
+              value={newPharmacy.serviceRegion}
+              onChange={(e) => setNewPharmacy({ ...newPharmacy, serviceRegion: e.target.value })}
+              placeholder="e.g. Pan-India / Delhi NCR"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Description &amp; Fulfillment SLA
+            </label>
+            <textarea
+              rows={2}
+              value={newPharmacy.description}
+              onChange={(e) => setNewPharmacy({ ...newPharmacy, description: e.target.value })}
+              placeholder="e.g. 2-hour emergency express delivery, cold-chain insulin storage, verified pharmacist check."
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => setIsAddOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={isSubmittingAdd}
+            >
+              Save Partner
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

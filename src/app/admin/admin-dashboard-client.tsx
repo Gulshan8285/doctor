@@ -425,8 +425,8 @@ export default function AdminDashboardClient({
               <Button
                 variant="outline"
                 size="md"
-                leftIcon={<FileCheck2 className="w-4 h-4 text-teal-300" />}
-                className="border-slate-700 text-slate-200 hover:bg-slate-800 cursor-pointer"
+                leftIcon={<FileCheck2 className="w-4 h-4 text-teal-600" />}
+                className="bg-white text-slate-900 border-slate-200 hover:bg-slate-100 font-bold shadow-sm cursor-pointer"
               >
                 All Prescriptions ({stats.totalPrescriptions})
               </Button>
@@ -1355,7 +1355,17 @@ export default function AdminDashboardClient({
 
                         {/* Metadata row */}
                         <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-                          <span>{formatDate(doc.createdAt)}</span>
+                          <div>
+                            <span className="text-slate-700 font-medium">{formatDate(doc.createdAt)}</span>
+                            <span className="ml-1.5 font-mono text-[10px] text-indigo-600 font-semibold">
+                              {new Date(doc.createdAt).toLocaleTimeString('en-IN', {
+                                hour12: true,
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })}
+                            </span>
+                          </div>
                           <span className="font-mono">{formatBytes(doc.fileSize)}</span>
                         </div>
                       </div>
@@ -1425,7 +1435,17 @@ export default function AdminDashboardClient({
                         <td className="py-3.5 px-4 font-medium text-slate-700">
                           {doc.doctorName}
                         </td>
-                        <td className="py-3.5 px-4 text-slate-500">{formatDate(doc.createdAt)}</td>
+                        <td className="py-3.5 px-4 text-slate-700">
+                          <div className="font-medium text-slate-800">{formatDate(doc.createdAt)}</div>
+                          <div className="text-[10px] font-mono text-indigo-600 font-semibold">
+                            {new Date(doc.createdAt).toLocaleTimeString('en-IN', {
+                              hour12: true,
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
+                          </div>
+                        </td>
                         <td className="py-3.5 px-4 text-slate-500">{formatBytes(doc.fileSize)}</td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -1682,7 +1702,7 @@ export default function AdminDashboardClient({
         isOpen={!!previewDoc}
         onClose={() => setPreviewDoc(null)}
         title={`Preview Document: ${previewDoc?.title || ''}`}
-        maxWidth="2xl"
+        maxWidth="4xl"
       >
         {previewDoc && (
           <div className="space-y-3.5">

@@ -2,49 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Stethoscope,
-  Lock,
-  Mail,
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  Users,
-  Shield,
-  KeyRound,
-} from 'lucide-react';
+import { Stethoscope, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const DOCTOR_ACCOUNTS = [
-  {
-    name: 'Dr. Rajesh Sharma',
-    role: 'Lead Cardiologist',
-    email: 'dr.sharma@apollo.org',
-    password: 'Healthcare@2026',
-    specialty: 'Cardiology (Lead)',
-  },
-  {
-    name: 'Dr. Ananya Patel',
-    role: 'Consultant Pediatrician',
-    email: 'dr.patel@apollo.org',
-    password: 'Healthcare@2026',
-    specialty: 'Pediatrics',
-  },
-  {
-    name: 'Dr. Vikram Gupta',
-    role: 'Orthopedic Surgeon',
-    email: 'dr.gupta@maxcare.org',
-    password: 'Healthcare@2026',
-    specialty: 'Orthopedics',
-  },
-  {
-    name: 'Priya Nair',
-    role: 'Clinical Assistant (Delegated)',
-    email: 'staff.priya@apollo.org',
-    password: 'Healthcare@2026',
-    specialty: 'Under Dr. Rajesh Sharma',
-  },
-];
 
 export default function DoctorLoginPage() {
   const router = useRouter();
@@ -52,37 +11,6 @@ export default function DoctorLoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const handleQuickDoctorLogin = async (targetEmail: string, targetPass = 'Healthcare@2026') => {
-    setEmail(targetEmail);
-    setPassword(targetPass);
-    setIsLoading(true);
-    setErrorMessage('');
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: targetEmail,
-          password: targetPass,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMessage(data.error || 'Login failed');
-        setIsLoading(false);
-        return;
-      }
-
-      router.push('/doctor');
-      router.refresh();
-    } catch {
-      setErrorMessage('Network connection error');
-      setIsLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,35 +31,34 @@ export default function DoctorLoginPage() {
         return;
       }
 
-      router.push('/doctor');
-      router.refresh();
+      window.location.href = '/doctor';
     } catch {
-      setErrorMessage('Network connection error');
+      setErrorMessage('Network connection error. Please try again.');
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-teal-500 selection:text-white">
       {/* Decorative ambient background glows */}
       <div className="absolute top-0 -left-20 w-96 h-96 rounded-full bg-teal-500/15 blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 -right-20 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-xl shadow-teal-600/25 border border-teal-400/30">
             <Stethoscope className="w-9 h-9" />
           </div>
         </div>
         <h2 className="mt-4 text-center text-3xl font-extrabold tracking-tight text-slate-900">
-          Doctor &amp; Clinical Portal
+          Doctor Clinical Login
         </h2>
         <p className="mt-1 text-center text-xs font-medium text-slate-500">
-          Dedicated Clinical Workspace for Attending Physicians, Specialists &amp; Delegated Staff
+          Authorized Attending Physicians &amp; Specialists Workspace
         </p>
       </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-xl relative z-10">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white/95 backdrop-blur-md py-8 px-6 sm:px-10 shadow-sm rounded-3xl border border-slate-200/90 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 to-emerald-400" />
 
@@ -142,56 +69,7 @@ export default function DoctorLoginPage() {
             </div>
           )}
 
-          {/* Quick Doctor Accounts Selection */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-teal-600" />
-                <span>Select Doctor Account (1-Click Instant Login):</span>
-              </span>
-              <span className="text-[10px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full font-bold border border-teal-200">
-                Password: Healthcare@2026
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {DOCTOR_ACCOUNTS.map((doc) => (
-                <button
-                  key={doc.email}
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => handleQuickDoctorLogin(doc.email, doc.password)}
-                  className="p-3 rounded-2xl border border-slate-200/90 bg-slate-50/70 hover:bg-teal-50/70 hover:border-teal-300 text-left transition-all group cursor-pointer"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 group-hover:text-teal-900">
-                        {doc.name}
-                      </p>
-                      <p className="text-[11px] font-medium text-teal-700">
-                        {doc.specialty}
-                      </p>
-                      <p className="text-[10px] font-mono text-slate-400 mt-1">
-                        {doc.email}
-                      </p>
-                    </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-all mt-1" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-slate-500 font-medium">Or enter credentials manually</span>
-            </div>
-          </div>
-
-          {/* Manual Login Form */}
+          {/* Clean Doctor Credentials Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
@@ -206,8 +84,8 @@ export default function DoctorLoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="doctor@hospital.org"
-                  className="block w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                  placeholder="e.g. dr.sharma@apollo.org"
+                  className="block w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2.5 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
               </div>
             </div>
@@ -226,7 +104,7 @@ export default function DoctorLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="block w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+                  className="block w-full rounded-xl border border-slate-300 pl-10 pr-3 py-2.5 text-sm text-slate-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
                 />
               </div>
             </div>
@@ -243,19 +121,29 @@ export default function DoctorLoginPage() {
             </Button>
           </form>
 
-          {/* Links to other portals */}
-          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col items-center gap-2 text-center">
+          {/* Quick Doctor Login Hint */}
+          <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+            <p className="text-[11px] text-slate-400">
+              Demo Credentials:{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('dr.sharma@apollo.org');
+                  setPassword('Healthcare@2026');
+                }}
+                className="text-teal-700 font-semibold hover:underline cursor-pointer"
+              >
+                dr.sharma@apollo.org / Healthcare@2026 (Auto-Fill)
+              </button>
+            </p>
+          </div>
+
+          <div className="mt-3 text-center">
             <a
               href="/admin/login"
               className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline"
             >
-              🏢 Looking for Admin Portal? Click here to Admin Login &rarr;
-            </a>
-            <a
-              href="/login"
-              className="text-[11px] text-slate-400 hover:text-slate-600 hover:underline"
-            >
-              Main Unified Hub (Portal Chooser)
+              Are you an Admin? Switch to Admin Login &rarr;
             </a>
           </div>
         </div>

@@ -63,8 +63,7 @@ export default function PrescriptionsVaultClient({
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
-  // Preview & upload modal states
-  const [previewDoc, setPreviewDoc] = useState<{ id: string; title: string } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadPatientId, setUploadPatientId] = useState(patients[0]?.id || '');
   const [uploadTitle, setUploadTitle] = useState('');
@@ -263,7 +262,7 @@ export default function PrescriptionsVaultClient({
                             variant="outline"
                             size="sm"
                             leftIcon={<Eye className="w-3.5 h-3.5" />}
-                            onClick={() => setPreviewDoc({ id: doc.id, title: doc.title })}
+                            onClick={() => setPreviewDoc(doc)}
                           >
                             Preview
                           </Button>
@@ -398,15 +397,23 @@ export default function PrescriptionsVaultClient({
           isOpen={Boolean(previewDoc)}
           onClose={() => setPreviewDoc(null)}
           title={`Document Preview: ${previewDoc.title}`}
-          maxWidth="2xl"
+          maxWidth="4xl"
         >
           <div className="space-y-4">
-            <div className="h-[460px] w-full rounded-xl border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center">
-              <iframe
-                src={`/api/prescriptions/${previewDoc.id}/preview`}
-                className="w-full h-full border-0 bg-white"
-                title={previewDoc.title}
-              />
+            <div className="h-[550px] w-full rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center p-1 shadow-inner">
+              {previewDoc.mimeType?.startsWith('image/') ? (
+                <img
+                  src={`/api/prescriptions/${previewDoc.id}/preview`}
+                  alt={previewDoc.title}
+                  className="max-w-full max-h-full object-contain p-2"
+                />
+              ) : (
+                <iframe
+                  src={`/api/prescriptions/${previewDoc.id}/preview`}
+                  className="w-full h-full border-0 rounded-lg bg-white"
+                  title={previewDoc.title}
+                />
+              )}
             </div>
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">

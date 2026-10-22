@@ -10,11 +10,11 @@ import { ShieldCheck, Clock } from 'lucide-react';
 export default async function AdminAuditPage() {
   const user = await getCurrentUser();
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    redirect('/login');
+    redirect('/admin/login');
   }
 
   const events = await prisma.auditEvent.findMany({
-    where: { organizationId: user.organizationId! },
+    where: user.organizationId ? { organizationId: user.organizationId } : {},
     orderBy: { createdAt: 'desc' },
     take: 50,
     include: {

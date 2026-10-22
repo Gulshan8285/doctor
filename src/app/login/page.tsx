@@ -63,8 +63,7 @@ export default function LoginPage() {
 
       if (data.success && data.redirectTo) {
         setSuccessNotice('Verified. Opening workspace...');
-        router.push(data.redirectTo);
-        router.refresh();
+        window.location.href = data.redirectTo;
       }
     } catch {
       setErrorMessage('Connection error. Please try again.');
@@ -106,8 +105,7 @@ export default function LoginPage() {
 
       if (data.success && data.redirectTo) {
         setSuccessNotice('Authentication verified. Redirecting...');
-        router.push(data.redirectTo);
-        router.refresh();
+        window.location.href = data.redirectTo;
       }
     } catch {
       setErrorMessage('Network connection error. Please try again.');

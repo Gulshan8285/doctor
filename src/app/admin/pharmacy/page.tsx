@@ -7,7 +7,7 @@ import PharmacyClient from '@/app/doctor/pharmacy/pharmacy-client';
 export default async function AdminPharmacyPage() {
   const user = await getCurrentUser();
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    redirect('/login');
+    redirect('/admin/login');
   }
 
   const providers = await prisma.pharmacyProvider.findMany({

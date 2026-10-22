@@ -13,51 +13,54 @@ export default async function PatientProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect('/doctor/login');
 
   const { id } = await params;
-  const access = await verifyPatientAccess(user, id);
 
-  if (!access.allowed || !access.patient) {
-    notFound();
-  }
-
-  // Fetch full patient profile
-  const patient = await prisma.patient.findUnique({
-    where: { id },
-    include: {
-      doctor: { select: { fullName: true, email: true, phone: true } },
-      organization: { select: { name: true, city: true } },
-      documents: {
-        orderBy: { createdAt: 'desc' },
-        include: {
-          uploadedBy: { select: { fullName: true, role: true } },
-          versions: {
-            orderBy: { versionNumber: 'desc' },
-            include: { createdBy: { select: { fullName: true } } },
+  // Fetch full patient profile and activity concurrently in a single database round-trip
+  const [patient, activity] = await Promise.all([
+    prisma.patient.findUnique({
+      where: { id },
+      include: {
+        doctor: { select: { fullName: true, email: true, phone: true } },
+        organization: { select: { name: true, city: true } },
+        documents: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            uploadedBy: { select: { fullName: true, role: true } },
+            versions: {
+              orderBy: { versionNumber: 'desc' },
+              include: { createdBy: { select: { fullName: true } } },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.auditEvent.findMany({
+      where: {
+        resourceType: { in: ['PATIENT', 'DOCUMENT'] },
+        resourceId: id,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 15,
+      include: {
+        user: { select: { fullName: true, role: true } },
+      },
+    }),
+  ]);
 
   if (!patient) notFound();
 
-  // Fetch audit activity
-  const activity = await prisma.auditEvent.findMany({
-    where: {
-      resourceType: { in: ['PATIENT', 'DOCUMENT'] },
-      OR: [
-        { resourceId: id },
-        { metadata: { contains: patient.patientCode } },
-      ],
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-    include: {
-      user: { select: { fullName: true, role: true } },
-    },
-  });
+  // Instant RBAC check
+  if (user.role === 'DOCTOR' && patient.doctorId !== user.userId) {
+    notFound();
+  }
+  if (user.role === 'DELEGATED_STAFF' && patient.doctorId !== user.delegatedDoctorId) {
+    notFound();
+  }
+  if (user.role === 'ADMIN' && patient.organizationId !== user.organizationId) {
+    notFound();
+  }
 
   return (
     <PatientProfileClient

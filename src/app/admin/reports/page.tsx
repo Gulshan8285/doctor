@@ -7,19 +7,20 @@ import ReportsClient from '@/app/doctor/reports/reports-client';
 export default async function AdminReportsPage() {
   const user = await getCurrentUser();
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    redirect('/login');
+    redirect('/admin/login');
   }
 
   const orgId = user.organizationId;
+  const orgFilter = orgId ? { organizationId: orgId } : {};
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [totalPatients, totalDocs, monthDocs, docsByCategory, recentUploads] =
     await Promise.all([
-      prisma.patient.count({ where: { organizationId: orgId! } }),
-      prisma.prescriptionDocument.count({ where: { organizationId: orgId! } }),
+      prisma.patient.count({ where: orgFilter }),
+      prisma.prescriptionDocument.count({ where: orgFilter }),
       prisma.prescriptionDocument.count({
-        where: { organizationId: orgId!, createdAt: { gte: startOfMonth } },
+        where: { ...orgFilter, createdAt: { gte: startOfMonth } },
       }),
       prisma.prescriptionDocument.groupBy({
         by: ['category'],

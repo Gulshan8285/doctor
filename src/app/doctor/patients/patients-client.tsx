@@ -223,8 +223,16 @@ export default function PatientsClient({
                       <td className="py-3.5 px-4 text-slate-600">
                         {p.gender || 'N/A'} {p.dob ? `(${formatDate(p.dob)})` : ''}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {formatDate(p.createdAt)}
+                      <td className="py-3.5 px-4 text-slate-700">
+                        <div className="font-semibold text-slate-800">{formatDate(p.createdAt)}</div>
+                        <div className="text-[10px] font-mono text-teal-700 font-medium">
+                          {new Date(p.createdAt).toLocaleTimeString('en-IN', {
+                            hour12: true,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <Badge variant={p.documentCount > 0 ? 'teal' : 'slate'}>
@@ -235,7 +243,7 @@ export default function PatientsClient({
                         className="py-3.5 px-4 text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Link href={`/doctor/patients/${p.id}`}>
+                        <Link href={`/doctor/patients/${p.id}`} prefetch={true}>
                           <Button
                             variant="outline"
                             size="sm"

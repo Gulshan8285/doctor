@@ -148,12 +148,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Reset failed attempts on success
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedAttempts: 0, lastLoginAt: new Date() },
-    });
-
     // Create session JWT
     const token = await signSession({
       userId: user.id,
@@ -165,8 +159,13 @@ export async function POST(req: NextRequest) {
       permissions,
     });
 
-    // Log success
-    await logAuditEvent({
+    // Background audit and attempt reset (non-blocking for instant sub-second login)
+    prisma.user.update({
+      where: { id: user.id },
+      data: { failedAttempts: 0, lastLoginAt: new Date() },
+    }).catch(console.error);
+
+    logAuditEvent({
       action: 'LOGIN_SUCCESS',
       resourceType: 'AUTH',
       userId: user.id,
@@ -174,7 +173,7 @@ export async function POST(req: NextRequest) {
       ipAddress: clientIp,
       userAgent,
       metadata: { role: user.role, mfaUsed: user.role === 'SUPER_ADMIN' || user.mfaEnabled },
-    });
+    }).catch(console.error);
 
     // Determine redirection route
     let redirectTo = '/doctor';

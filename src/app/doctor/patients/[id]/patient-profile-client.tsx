@@ -834,15 +834,23 @@ export default function PatientProfileClient({
           isOpen={Boolean(previewDoc)}
           onClose={() => setPreviewDoc(null)}
           title={`Document Preview: ${previewDoc.title}`}
-          maxWidth="2xl"
+          maxWidth="4xl"
         >
           <div className="space-y-4">
-            <div className="h-[460px] w-full rounded-xl border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center">
-              <iframe
-                src={`/api/prescriptions/${previewDoc.id}/preview`}
-                className="w-full h-full border-0 bg-white"
-                title={previewDoc.title}
-              />
+            <div className="h-[550px] w-full rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center shadow-inner">
+              {previewDoc.mimeType?.startsWith('image/') ? (
+                <img
+                  src={`/api/prescriptions/${previewDoc.id}/preview`}
+                  alt={previewDoc.title}
+                  className="max-w-full max-h-full object-contain p-2"
+                />
+              ) : (
+                <iframe
+                  src={`/api/prescriptions/${previewDoc.id}/preview`}
+                  className="w-full h-full border-0 bg-white"
+                  title={previewDoc.title}
+                />
+              )}
             </div>
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center gap-1.5">

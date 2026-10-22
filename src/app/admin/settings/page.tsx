@@ -9,7 +9,7 @@ import { ShieldCheck, Building2, Lock } from 'lucide-react';
 export default async function AdminSettingsPage() {
   const user = await getCurrentUser();
   if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    redirect('/login');
+    redirect('/admin/login');
   }
 
   const org = await prisma.organization.findUnique({

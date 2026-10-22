@@ -42,11 +42,48 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'DOCTOR') {
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const body = await req.json();
+
+    // Admin / Super Admin can add new pharmacy providers to the catalog
+    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+      const { name, website, description, serviceRegion, connectionType } = body;
+      if (!name || !name.trim()) {
+        return NextResponse.json({ error: 'Pharmacy provider name is required' }, { status: 400 });
+      }
+
+      const baseSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const newProvider = await prisma.pharmacyProvider.create({
+        data: {
+          name: name.trim(),
+          slug: `${baseSlug}-${Date.now().toString(36)}`,
+          website: website?.trim() || null,
+          description: description?.trim() || 'Authorized clinic integrated pharmacy network.',
+          serviceRegion: serviceRegion?.trim() || 'Pan-India',
+          connectionType: connectionType?.trim() || 'DIRECT_API',
+          isActive: true,
+        },
+      });
+
+      try {
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath('/admin/pharmacy');
+        revalidatePath('/doctor/pharmacy');
+      } catch {}
+
+      return NextResponse.json({
+        success: true,
+        message: `Pharmacy partner ${name} added successfully to clinic catalog!`,
+        provider: newProvider,
+      });
+    }
+
+    if (user.role !== 'DOCTOR') {
       return NextResponse.json({ error: 'Only doctors can configure pharmacy preference' }, { status: 403 });
     }
 
-    const body = await req.json();
     const { providerId, notes } = body;
 
     if (!providerId) {

@@ -172,7 +172,17 @@ export default function AdminPrescriptionsClient({ initialDocs }: AdminPrescript
                       <td className="py-3.5 px-4 text-slate-700 font-medium">
                         {d.doctorName}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-500">{formatDate(d.createdAt)}</td>
+                      <td className="py-3.5 px-4 text-slate-700">
+                        <div className="font-medium text-slate-800">{formatDate(d.createdAt)}</div>
+                        <div className="text-[10px] font-mono text-indigo-600 font-semibold">
+                          {new Date(d.createdAt).toLocaleTimeString('en-IN', {
+                            hour12: true,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                          })}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-500">{formatBytes(d.fileSize)}</td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -209,7 +219,7 @@ export default function AdminPrescriptionsClient({ initialDocs }: AdminPrescript
         isOpen={!!previewDoc}
         onClose={() => setPreviewDoc(null)}
         title={`Preview Document: ${previewDoc?.title || ''}`}
-        maxWidth="2xl"
+        maxWidth="4xl"
       >
         {previewDoc && (
           <div className="space-y-3.5">
@@ -233,7 +243,7 @@ export default function AdminPrescriptionsClient({ initialDocs }: AdminPrescript
               </a>
             </div>
 
-            <div className="w-full h-[550px] border border-slate-200 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
+            <div className="w-full h-[600px] border border-slate-200 rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center shadow-inner">
               {previewDoc.mimeType === 'application/pdf' ? (
                 <iframe
                   src={`/api/prescriptions/${previewDoc.id}/preview`}
