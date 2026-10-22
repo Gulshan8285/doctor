@@ -218,6 +218,26 @@ export default function DoctorDashboardClient({
         type: 'success',
       });
 
+      if (data.document) {
+        setPatients((prev) =>
+          prev.map((p) =>
+            p.id === uploadForm.patientId
+              ? {
+                  ...p,
+                  documentCount: p.documentCount + 1,
+                  latestUploadDate: new Date().toISOString(),
+                  latestUploadTitle: uploadForm.title,
+                }
+              : p
+          )
+        );
+        setStats((prev) => ({
+          ...prev,
+          totalPrescriptions: prev.totalPrescriptions + 1,
+          monthUploads: prev.monthUploads + 1,
+        }));
+      }
+
       setIsUploadOpen(false);
       setUploadFile(null);
       setUploadForm({

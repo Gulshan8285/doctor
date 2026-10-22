@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { verifyUploadPermission } from '@/lib/permissions';
@@ -127,10 +128,30 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const fullDoc = await prisma.prescriptionDocument.findUnique({
+      where: { id: document.id },
+      include: {
+        patient: { select: { fullName: true, patientCode: true } },
+        doctor: { select: { fullName: true } },
+        uploadedBy: { select: { fullName: true } },
+      },
+    });
+
+    // Invalidate caches across admin and doctor views
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/admin/prescriptions');
+      revalidatePath('/doctor');
+      revalidatePath('/doctor/prescriptions');
+      revalidatePath(`/doctor/patients/${patientId}`);
+    } catch {
+      // Non-blocking in background/test contexts
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Document uploaded and finalized with cryptographic integrity verification.',
-      document,
+      document: fullDoc || document,
     });
   } catch (error) {
     console.error('Prescription upload error:', error);

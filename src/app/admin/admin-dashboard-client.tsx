@@ -81,6 +81,26 @@ interface AuditItem {
   metadata: any;
 }
 
+export interface DelegatedStaffItem {
+  id: string;
+  invitedEmail: string;
+  invitedName: string | null;
+  status: string;
+  permissions: string[];
+  createdAt: string;
+  grantingDoctorName: string;
+  grantingDoctorEmail: string;
+  staffUser: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string | null;
+    role: string;
+    status: string;
+    lastLoginAt: string | null;
+  } | null;
+}
+
 interface AdminDashboardClientProps {
   stats: {
     totalDoctors: number;
@@ -89,6 +109,7 @@ interface AdminDashboardClientProps {
     activeDelegates: number;
   };
   doctors: DoctorItem[];
+  delegatedStaff?: DelegatedStaffItem[];
   recentPrescriptions: PrescriptionItem[];
   recentAudits: AuditItem[];
 }
@@ -96,11 +117,30 @@ interface AdminDashboardClientProps {
 export default function AdminDashboardClient({
   stats,
   doctors,
+  delegatedStaff = [],
   recentPrescriptions = [],
   recentAudits,
 }: AdminDashboardClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+
+  const [doctorList, setDoctorList] = useState<DoctorItem[]>(doctors);
+  const [staffList, setStaffList] = useState<DelegatedStaffItem[]>(delegatedStaff);
+  const [prescriptionList, setPrescriptionList] = useState<PrescriptionItem[]>(recentPrescriptions);
+  const [staffViewMode, setStaffViewMode] = useState<'card' | 'table'>('card');
+  const [isRevokingStaff, setIsRevokingStaff] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setDoctorList(doctors);
+  }, [doctors]);
+
+  React.useEffect(() => {
+    setStaffList(delegatedStaff || []);
+  }, [delegatedStaff]);
+
+  React.useEffect(() => {
+    setPrescriptionList(recentPrescriptions);
+  }, [recentPrescriptions]);
 
   const [isProvisionOpen, setIsProvisionOpen] = useState(false);
   const [provisionForm, setProvisionForm] = useState({
@@ -223,6 +263,11 @@ export default function AdminDashboardClient({
     const newStatus = doctor.status === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
     setIsTogglingStatus(doctor.id);
 
+    // Fast 0ms optimistic UI update
+    setDoctorList((prev) =>
+      prev.map((d) => (d.id === doctor.id ? { ...d, status: newStatus } : d))
+    );
+
     try {
       const res = await fetch('/api/admin/doctors', {
         method: 'PATCH',
@@ -235,6 +280,10 @@ export default function AdminDashboardClient({
 
       const data = await res.json();
       if (!res.ok) {
+        // Rollback on error
+        setDoctorList((prev) =>
+          prev.map((d) => (d.id === doctor.id ? { ...d, status: doctor.status } : d))
+        );
         toast({ title: 'Status Update Failed', description: data.error, type: 'error' });
         return;
       }
@@ -246,9 +295,50 @@ export default function AdminDashboardClient({
       });
       router.refresh();
     } catch {
+      setDoctorList((prev) =>
+        prev.map((d) => (d.id === doctor.id ? { ...d, status: doctor.status } : d))
+      );
       toast({ title: 'Error', description: 'Could not update status', type: 'error' });
     } finally {
       setIsTogglingStatus(null);
+    }
+  };
+
+  const handleRevokeStaffAccess = async (staff: DelegatedStaffItem) => {
+    setIsRevokingStaff(staff.id);
+    // Optimistic UI update (0ms delay)
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === staff.id ? { ...s, status: 'REVOKED' } : s))
+    );
+
+    try {
+      const res = await fetch(`/api/team?id=${staff.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        // Rollback
+        setStaffList((prev) =>
+          prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s))
+        );
+        toast({ title: 'Revocation Failed', description: data.error, type: 'error' });
+        return;
+      }
+
+      toast({
+        title: 'Staff Access Revoked',
+        description: `Subordinate access for ${staff.staffUser?.fullName || staff.invitedName} has been immediately revoked.`,
+        type: 'success',
+      });
+      router.refresh();
+    } catch {
+      setStaffList((prev) =>
+        prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s))
+      );
+      toast({ title: 'Error', description: 'Could not connect to server', type: 'error' });
+    } finally {
+      setIsRevokingStaff(null);
     }
   };
 
@@ -265,9 +355,11 @@ export default function AdminDashboardClient({
     return { border: 'border-indigo-500', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200', tag: labName || 'Partner Lab' };
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'SM';
     return name
       .split(' ')
+      .filter(Boolean)
       .map((n) => n[0])
       .slice(0, 2)
       .join('')
@@ -437,7 +529,7 @@ export default function AdminDashboardClient({
               <CardTitle className="text-base sm:text-lg font-bold text-slate-900">
                 Organization Medical Staff & Clinicians
               </CardTitle>
-              <Badge variant="teal">{doctors.length} Doctors</Badge>
+              <Badge variant="teal">{doctorList.length} Doctors</Badge>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Full directory of doctors provisioned in this healthcare tenant with access control and delegation quotas.
@@ -489,7 +581,7 @@ export default function AdminDashboardClient({
           {doctorViewMode === 'card' ? (
             /* DOCTOR CARDS GRID */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {doctors.map((doc) => {
+              {doctorList.map((doc) => {
                 const isActive = doc.status === 'ACTIVE';
                 return (
                   <div
@@ -564,7 +656,7 @@ export default function AdminDashboardClient({
                         size="sm"
                         onClick={() => handleOpenEdit(doc)}
                         leftIcon={<Pencil className="w-3.5 h-3.5 text-slate-500" />}
-                        className="text-xs flex-1"
+                        className="text-xs flex-1 cursor-pointer"
                       >
                         Edit
                       </Button>
@@ -572,7 +664,7 @@ export default function AdminDashboardClient({
                         variant={isActive ? 'ghost' : 'outline'}
                         size="sm"
                         isLoading={isTogglingStatus === doc.id}
-                        className={`text-xs font-semibold flex-1 ${
+                        className={`text-xs font-semibold flex-1 cursor-pointer ${
                           isActive
                             ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'
                             : 'text-teal-600 border-teal-300 hover:bg-teal-50'
@@ -603,7 +695,7 @@ export default function AdminDashboardClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {doctors.map((doc) => (
+                  {doctorList.map((doc) => (
                     <tr key={doc.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-slate-900">
                         {doc.fullName}
@@ -639,7 +731,7 @@ export default function AdminDashboardClient({
                             size="sm"
                             onClick={() => handleOpenEdit(doc)}
                             leftIcon={<Pencil className="w-3.5 h-3.5 text-slate-500" />}
-                            className="text-xs"
+                            className="text-xs cursor-pointer"
                           >
                             Edit
                           </Button>
@@ -647,16 +739,275 @@ export default function AdminDashboardClient({
                             variant={doc.status === 'ACTIVE' ? 'ghost' : 'outline'}
                             size="sm"
                             isLoading={isTogglingStatus === doc.id}
-                            className={
+                            className={`text-xs font-semibold cursor-pointer ${
                               doc.status === 'ACTIVE'
-                                ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs font-semibold'
-                                : 'text-teal-600 border-teal-300 hover:bg-teal-50 text-xs font-semibold'
-                            }
+                                ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50'
+                                : 'text-teal-600 border-teal-300 hover:bg-teal-50'
+                            }`}
                             onClick={() => handleToggleStatus(doc)}
                           >
                             {doc.status === 'ACTIVE' ? 'Revoke Access' : 'Grant Access'}
                           </Button>
                         </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 3.5. DELEGATED CLINICAL STAFF & DOCTOR HIERARCHY (SUBORDINATES) */}
+      <Card className="border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="h-1.5 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500" />
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                <UserCheck className="w-4 h-4" />
+              </div>
+              <CardTitle className="text-base sm:text-lg font-bold text-slate-900">
+                Delegated Clinical Staff & Doctor Hierarchy (Subordinates)
+              </CardTitle>
+              <Badge variant="purple">{staffList.length} Delegated Members</Badge>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Subordinate clinical assistants, nurses, and staff granted access by attending doctors. Displays supervisory doctor linkage and active permissions.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* View Mode Toggle: Card vs Table */}
+            <div className="inline-flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => setStaffViewMode('card')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  staffViewMode === 'card'
+                    ? 'bg-white text-purple-700 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Card View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStaffViewMode('table')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  staffViewMode === 'table'
+                    ? 'bg-white text-purple-700 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span>Table View</span>
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-4 sm:p-5">
+          {staffList.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+              <UserCheck className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-xs text-slate-700 font-bold">
+                No delegated subordinate staff registered currently.
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                When doctors invite subordinate clinical assistants or nurses from their Doctor Team dashboard, they will appear here in real-time.
+              </p>
+            </div>
+          ) : staffViewMode === 'card' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {staffList.map((st) => {
+                const isActive = st.status === 'ACTIVE';
+                const isPending = st.status === 'PENDING';
+                return (
+                  <div
+                    key={st.id}
+                    className="card-hover-lift bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex flex-col justify-between relative overflow-hidden transition-all"
+                  >
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-1.5 ${
+                        isActive
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-500'
+                          : isPending
+                          ? 'bg-amber-400'
+                          : 'bg-rose-400'
+                      }`}
+                    />
+
+                    <div>
+                      {/* Top Row: Avatar & Status */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 text-purple-700 font-extrabold flex items-center justify-center text-base shadow-xs shrink-0">
+                            {getInitials(st.staffUser?.fullName || st.invitedName)}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900 line-clamp-1">
+                              {st.staffUser?.fullName || st.invitedName}
+                            </h4>
+                            <span className="inline-block text-[11px] font-semibold text-purple-700 mt-0.5">
+                              {st.staffUser?.role === 'DELEGATED_STAFF'
+                                ? 'Clinical Assistant'
+                                : isPending
+                                ? 'Invited Delegate'
+                                : 'Medical Staff'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {isActive ? (
+                          <Badge variant="emerald">Active</Badge>
+                        ) : isPending ? (
+                          <Badge variant="amber">Pending</Badge>
+                        ) : (
+                          <Badge variant="rose">Revoked</Badge>
+                        )}
+                      </div>
+
+                      {/* Supervisory Linkage (Doctor Hierarchy) */}
+                      <div className="mt-3.5 p-3 rounded-xl bg-purple-50/60 border border-purple-100/80">
+                        <div className="flex items-center gap-1.5 text-xs text-purple-950 font-bold mb-1">
+                          <Stethoscope className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                          <span>Supervising Doctor:</span>
+                        </div>
+                        <p className="text-xs font-semibold text-slate-800">
+                          {st.grantingDoctorName}
+                        </p>
+                        <p className="text-[11px] font-mono text-slate-500">
+                          {st.grantingDoctorEmail}
+                        </p>
+                      </div>
+
+                      {/* Contact Info */}
+                      <div className="mt-3 space-y-1 text-xs text-slate-600">
+                        <div className="flex items-center gap-2 font-mono text-[11px] text-slate-500">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{st.staffUser?.email || st.invitedEmail}</span>
+                        </div>
+                        {st.staffUser?.phone && (
+                          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{st.staffUser.phone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Delegated Permissions Chips */}
+                      <div className="mt-3">
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">
+                          Delegated Permissions ({st.permissions.length}):
+                        </p>
+                        <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                          {st.permissions.map((perm) => (
+                            <span
+                              key={perm}
+                              className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-medium text-slate-700"
+                            >
+                              {perm.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                      <span>Granted: {formatDate(st.createdAt)}</span>
+                      {isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          isLoading={isRevokingStaff === st.id}
+                          onClick={() => handleRevokeStaffAccess(st)}
+                          className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-bold px-2.5 py-1 h-auto cursor-pointer"
+                        >
+                          Revoke Access
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-slate-600 font-semibold uppercase tracking-wider">
+                    <th className="py-3 px-4">Staff Member</th>
+                    <th className="py-3 px-4">Supervising Doctor</th>
+                    <th className="py-3 px-4">Contact</th>
+                    <th className="py-3 px-4">Delegated Permissions</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Granted Date</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {staffList.map((st) => (
+                    <tr key={st.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">
+                        {st.staffUser?.fullName || st.invitedName}
+                        <span className="text-[10px] text-purple-600 block font-semibold">
+                          Subordinate Staff
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-slate-800 block">
+                          {st.grantingDoctorName}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          {st.grantingDoctorEmail}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-500">
+                        <div>{st.staffUser?.email || st.invitedEmail}</div>
+                        {st.staffUser?.phone && <div className="text-[11px]">{st.staffUser.phone}</div>}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {st.permissions.slice(0, 3).map((p) => (
+                            <span key={p} className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] text-slate-700">
+                              {p.replace(/_/g, ' ')}
+                            </span>
+                          ))}
+                          {st.permissions.length > 3 && (
+                            <span className="text-[10px] text-slate-400">
+                              +{st.permissions.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {st.status === 'ACTIVE' ? (
+                          <Badge variant="emerald">Active</Badge>
+                        ) : st.status === 'PENDING' ? (
+                          <Badge variant="amber">Pending</Badge>
+                        ) : (
+                          <Badge variant="rose">Revoked</Badge>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {formatDate(st.createdAt)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {st.status === 'ACTIVE' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            isLoading={isRevokingStaff === st.id}
+                            onClick={() => handleRevokeStaffAccess(st)}
+                            className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-bold cursor-pointer"
+                          >
+                            Revoke
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -676,7 +1027,7 @@ export default function AdminDashboardClient({
                 <CardTitle className="text-base sm:text-lg font-bold text-slate-900">
                   Doctor Prescription Uploads & Documents
                 </CardTitle>
-                <Badge variant="teal">{recentPrescriptions.length} Uploaded</Badge>
+                <Badge variant="teal">{prescriptionList.length} Uploaded</Badge>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Live cryptographic feed of clinical prescriptions, diagnostic reports, and medical files uploaded by doctors.
@@ -733,7 +1084,7 @@ export default function AdminDashboardClient({
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                 }`}
               >
-                All Labs ({recentPrescriptions.length})
+                All Labs ({prescriptionList.length})
               </button>
               {['Dr Lal PathLabs', 'Tata 1mg', 'Redcliffe Labs', 'Healthians', 'Thyrocare', 'Metropolis Healthcare'].map((lab) => {
                 const isSelected = selectedLabFilter.toLowerCase() === lab.toLowerCase();
@@ -786,7 +1137,7 @@ export default function AdminDashboardClient({
 
         <CardContent className="p-4 sm:p-5">
           {(() => {
-            const filteredPrescriptions = recentPrescriptions.filter((doc) => {
+            const filteredPrescriptions = prescriptionList.filter((doc) => {
               const matchesLab =
                 selectedLabFilter === 'ALL' ||
                 (doc.diagnosticLab || 'Dr Lal PathLabs').toLowerCase() ===

@@ -9,7 +9,8 @@ export default async function AdminDashboardPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const orgId = user.organizationId || '';
+  const orgId = user.organizationId;
+  const orgFilter = orgId ? { organizationId: orgId } : {};
 
   const [
     totalDoctors,
@@ -17,20 +18,21 @@ export default async function AdminDashboardPage() {
     totalPrescriptions,
     activeDelegates,
     doctorsList,
+    delegatedStaffList,
     recentAuditEvents,
     recentPrescriptions,
   ] = await Promise.all([
-    prisma.user.count({ where: { organizationId: orgId, role: 'DOCTOR' } }),
-    prisma.patient.count({ where: { organizationId: orgId } }),
-    prisma.prescriptionDocument.count({ where: { organizationId: orgId } }),
+    prisma.user.count({ where: { ...orgFilter, role: 'DOCTOR' } }),
+    prisma.patient.count({ where: orgFilter }),
+    prisma.prescriptionDocument.count({ where: orgFilter }),
     prisma.delegatedAccess.count({
       where: {
-        grantingDoctor: { organizationId: orgId },
+        ...(orgId ? { grantingDoctor: { organizationId: orgId } } : {}),
         status: 'ACTIVE',
       },
     }),
     prisma.user.findMany({
-      where: { organizationId: orgId, role: { in: ['DOCTOR', 'DELEGATED_STAFF'] } },
+      where: { ...orgFilter, role: 'DOCTOR' },
       include: {
         doctorProfile: {
           include: { preferredPharmacy: { select: { name: true } } },
@@ -44,16 +46,34 @@ export default async function AdminDashboardPage() {
       },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.auditEvent.findMany({
-      where: { organizationId: orgId },
+    prisma.delegatedAccess.findMany({
+      where: orgId ? { grantingDoctor: { organizationId: orgId } } : {},
+      include: {
+        grantingDoctor: { select: { id: true, fullName: true, email: true } },
+        staffUser: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            role: true,
+            status: true,
+            lastLoginAt: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+    }),
+    prisma.auditEvent.findMany({
+      where: orgFilter,
+      orderBy: { createdAt: 'desc' },
+      take: 15,
       include: { user: { select: { fullName: true, role: true } } },
     }),
     prisma.prescriptionDocument.findMany({
-      where: orgId ? { organizationId: orgId } : {},
+      where: orgFilter,
       orderBy: { createdAt: 'desc' },
-      take: 25,
+      take: 50,
       include: {
         patient: { select: { fullName: true, patientCode: true } },
         doctor: { select: { fullName: true } },
@@ -77,12 +97,33 @@ export default async function AdminDashboardPage() {
         phone: d.phone,
         role: d.role,
         status: d.status,
-        specialization: d.doctorProfile?.specialization || 'N/A',
+        specialization: d.doctorProfile?.specialization || 'General Physician',
         preferredPharmacy: d.doctorProfile?.preferredPharmacy?.name || 'None Selected',
         patientCount: d._count.patientsCreated,
         docCount: d._count.doctorDocuments,
         activeDelegates: d.delegatedAccessGranted.length,
         createdAt: d.createdAt.toISOString(),
+      }))}
+      delegatedStaff={delegatedStaffList.map((d) => ({
+        id: d.id,
+        invitedEmail: d.invitedEmail,
+        invitedName: d.invitedName,
+        status: d.status,
+        permissions: JSON.parse(d.permissions || '[]'),
+        createdAt: d.createdAt.toISOString(),
+        grantingDoctorName: d.grantingDoctor.fullName,
+        grantingDoctorEmail: d.grantingDoctor.email,
+        staffUser: d.staffUser
+          ? {
+              id: d.staffUser.id,
+              fullName: d.staffUser.fullName,
+              email: d.staffUser.email,
+              phone: d.staffUser.phone,
+              role: d.staffUser.role,
+              status: d.staffUser.status,
+              lastLoginAt: d.staffUser.lastLoginAt ? d.staffUser.lastLoginAt.toISOString() : null,
+            }
+          : null,
       }))}
       recentPrescriptions={recentPrescriptions.map((doc) => ({
         id: doc.id,

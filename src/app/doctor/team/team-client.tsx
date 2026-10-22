@@ -168,6 +168,24 @@ export default function TeamClient({
         type: 'success',
       });
 
+      if (data.delegation) {
+        setDelegates((prev) => [
+          {
+            id: data.delegation.id,
+            invitedEmail: data.delegation.invitedEmail,
+            invitedName: data.delegation.invitedName,
+            status: data.delegation.status,
+            permissions: typeof data.delegation.permissions === 'string' ? JSON.parse(data.delegation.permissions) : data.delegation.permissions,
+            createdAt: data.delegation.createdAt,
+            expiresAt: data.delegation.expiresAt,
+            revokedAt: null,
+            staffUser: null,
+          },
+          ...prev,
+        ]);
+        setCurrentActiveCount((c) => c + 1);
+      }
+
       setIsInviteOpen(false);
       setInviteName('');
       setInviteEmail('');
@@ -181,67 +199,85 @@ export default function TeamClient({
 
   const handleRevokeConfirm = async () => {
     if (!revokeTarget) return;
-    setIsSubmittingRevoke(true);
+    const target = revokeTarget;
+    const previousDelegates = delegates;
+    const previousCount = currentActiveCount;
+
+    // Optimistic instant update (0ms lag)
+    setDelegates((prev) =>
+      prev.map((d) => (d.id === target.id ? { ...d, status: 'REVOKED' as const, revokedAt: new Date().toISOString() } : d))
+    );
+    setCurrentActiveCount((c) => Math.max(0, c - 1));
+    setRevokeTarget(null);
+
+    toast({
+      title: 'Access Revoked Immediately',
+      description: `Team member ${target.invitedEmail} no longer has access to your records.`,
+      type: 'success',
+    });
 
     try {
-      const res = await fetch(`/api/team?id=${revokeTarget.id}`, {
+      const res = await fetch(`/api/team?id=${target.id}`, {
         method: 'DELETE',
       });
 
       const data = await res.json();
       if (!res.ok) {
+        // Rollback on error
+        setDelegates(previousDelegates);
+        setCurrentActiveCount(previousCount);
         toast({ title: 'Revocation Failed', description: data.error, type: 'error' });
         return;
       }
 
-      toast({
-        title: 'Access Revoked Immediately',
-        description: `Team member ${revokeTarget.invitedEmail} no longer has access to your records.`,
-        type: 'success',
-      });
-
-      setRevokeTarget(null);
       router.refresh();
     } catch {
+      setDelegates(previousDelegates);
+      setCurrentActiveCount(previousCount);
       toast({ title: 'Error', description: 'Could not revoke access', type: 'error' });
-    } finally {
-      setIsSubmittingRevoke(false);
     }
   };
 
   const handleSavePermissions = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
+    const target = editTarget;
+    const newPerms = [...editPermissions];
+    const previousDelegates = delegates;
 
-    setIsSubmittingEdit(true);
+    // Optimistic instant update (0ms lag)
+    setDelegates((prev) =>
+      prev.map((d) => (d.id === target.id ? { ...d, permissions: newPerms } : d))
+    );
+    setEditTarget(null);
+
+    toast({
+      title: 'Permissions Updated',
+      description: 'Updated permissions applied immediately.',
+      type: 'success',
+    });
+
     try {
       const res = await fetch('/api/team', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          delegationId: editTarget.id,
-          permissions: editPermissions,
+          delegationId: target.id,
+          permissions: newPerms,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
+        setDelegates(previousDelegates);
         toast({ title: 'Update Failed', description: data.error, type: 'error' });
         return;
       }
 
-      toast({
-        title: 'Permissions Updated',
-        description: 'Updated permissions applied immediately.',
-        type: 'success',
-      });
-
-      setEditTarget(null);
       router.refresh();
     } catch {
+      setDelegates(previousDelegates);
       toast({ title: 'Error', description: 'Failed to update permissions', type: 'error' });
-    } finally {
-      setIsSubmittingEdit(false);
     }
   };
 

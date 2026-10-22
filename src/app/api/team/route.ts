@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { checkDoctorDelegateLimit } from '@/lib/permissions';
@@ -147,6 +148,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/doctor');
+      revalidatePath('/doctor/team');
+    } catch {}
+
     return NextResponse.json({
       success: true,
       message: `Invitation issued successfully to ${targetEmail}`,
@@ -200,6 +207,12 @@ export async function PATCH(req: NextRequest) {
       ipAddress: clientIp,
       metadata: { updatedPermissions: permissions, targetEmail: delegation.invitedEmail },
     });
+
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/doctor');
+      revalidatePath('/doctor/team');
+    } catch {}
 
     return NextResponse.json({
       success: true,
@@ -257,6 +270,12 @@ export async function DELETE(req: NextRequest) {
         revokedAt: new Date(),
       },
     });
+
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/doctor');
+      revalidatePath('/doctor/team');
+    } catch {}
 
     return NextResponse.json({
       success: true,
