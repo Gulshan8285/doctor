@@ -1,12 +1,13 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import SuperAdminClient from './super-admin-client';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function SuperAdminPage() {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
   if (!user || user.role !== 'SUPER_ADMIN') return null;
 
   const [organizations, stats, auditEvents] = await Promise.all([

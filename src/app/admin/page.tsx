@@ -1,12 +1,13 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import AdminDashboardClient from './admin-dashboard-client';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function AdminDashboardPage() {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
   if (!user) return null;
 
   const orgId = user.organizationId;

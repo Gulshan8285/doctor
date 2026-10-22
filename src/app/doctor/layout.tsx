@@ -1,13 +1,15 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { getDoctorSession, getCurrentUser } from '@/lib/auth';
+import { getDoctorSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ToastProvider } from '@/components/ui/toast';
 
 export const dynamic = 'force-dynamic';
+// Always fresh auth but allow instant skeleton via loading.tsx streaming
+export const revalidate = 0;
 
 export default async function DoctorLayout({
   children,
@@ -20,7 +22,8 @@ export default async function DoctorLayout({
     return <>{children}</>;
   }
 
-  const user = (await getDoctorSession()) || (await getCurrentUser());
+  // Strict doctor isolation - never fallback to admin cookie
+  const user = await getDoctorSession();
 
   if (!user || (user.role !== 'DOCTOR' && user.role !== 'DELEGATED_STAFF')) {
     redirect('/doctor/login');

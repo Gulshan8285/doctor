@@ -1,19 +1,21 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getDoctorSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ToastProvider } from '@/components/ui/toast';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function StaffLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  // Strict isolation: staff shares DOCTOR_COOKIE, never use admin cookie
+  const user = await getDoctorSession();
 
   if (!user) {
     redirect('/login');

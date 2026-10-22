@@ -46,11 +46,11 @@ export function Header({ userName, userEmail, userRole, notifications = [] }: He
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
       const target = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' ? '/admin/login' : userRole === 'DELEGATED_STAFF' ? '/login' : '/doctor/login';
-      router.push(target);
-      router.refresh();
+      // Hard redirect so cookie is fully cleared before next auth check
+      window.location.href = target;
     } catch {
       const target = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' ? '/admin/login' : '/doctor/login';
-      router.push(target);
+      window.location.href = target;
     }
   };
 
@@ -71,8 +71,7 @@ export function Header({ userName, userEmail, userRole, notifications = [] }: He
       });
       const data = await res.json();
       if (data.redirectTo) {
-        router.push(data.redirectTo);
-        router.refresh();
+        window.location.href = data.redirectTo;
       }
     } catch {
       router.push('/login');

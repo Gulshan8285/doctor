@@ -78,30 +78,63 @@ async function getSessionFromCookie(cookieName: string): Promise<SessionPayload 
 }
 
 export const getDoctorSession = cache(async function getDoctorSession(): Promise<SessionPayload | null> {
-  const s = await getSessionFromCookie(DOCTOR_COOKIE);
+  const s = await getSessionFromCookieCached(DOCTOR_COOKIE);
   if (s && (s.role === 'DOCTOR' || s.role === 'DELEGATED_STAFF')) return s;
   return null;
 });
 
 export const getAdminSession = cache(async function getAdminSession(): Promise<SessionPayload | null> {
-  const s = await getSessionFromCookie(ADMIN_COOKIE);
+  const s = await getSessionFromCookieCached(ADMIN_COOKIE);
   if (s && (s.role === 'ADMIN' || s.role === 'SUPER_ADMIN')) return s;
   if (!s) {
-    const leg = await getSessionFromCookie(LEGACY_COOKIE);
+    const leg = await getSessionFromCookieCached(LEGACY_COOKIE);
     if (leg && (leg.role === 'ADMIN' || leg.role === 'SUPER_ADMIN')) return leg;
   }
   return s && (s.role === 'ADMIN' || s.role === 'SUPER_ADMIN') ? s : null;
 });
 
-export const getCurrentUser = cache(async function getCurrentUser(): Promise<SessionPayload | null> {
+// In-memory 60s cache to keep DB validation fast (<50ms) without re-query every RSC/layout
+const VALIDATED_CACHE = new Map<string, { v: SessionPayload | null; exp: number }>();
+const CACHE_TTL_MS = 60_000;
+async function cachedValidate(payload: SessionPayload | null, cacheKey: string): Promise<SessionPayload | null> {
+  if (!payload?.userId) return null;
+  const now = Date.now();
+  const hit = VALIDATED_CACHE.get(cacheKey);
+  if (hit && hit.exp > now) return hit.v as SessionPayload | null;
+  const validated = await validatePayload(payload);
+  VALIDATED_CACHE.set(cacheKey, { v: validated, exp: now + CACHE_TTL_MS });
+  // prevent unbounded growth
+  if (VALIDATED_CACHE.size > 500) {
+    const first = VALIDATED_CACHE.keys().next().value as string | undefined;
+    if (first) VALIDATED_CACHE.delete(first);
+  }
+  return validated;
+}
+
+async function getSessionFromCookieCached(cookieName: string): Promise<SessionPayload | null> {
   try {
     const cookieStore = await cookies();
-    const doctorToken = cookieStore.get(DOCTOR_COOKIE)?.value;
-    if (doctorToken) { const p = await verifySession(doctorToken); const v = await validatePayload(p); if (v) return v; }
-    const adminToken = cookieStore.get(ADMIN_COOKIE)?.value;
-    if (adminToken) { const p = await verifySession(adminToken); const v = await validatePayload(p); if (v) return v; }
-    return null;
-  } catch (error) { console.error('Error verifying current user:', error); return null; }
+    const token = cookieStore.get(cookieName)?.value;
+    if (!token) return null;
+    // Use last 16 chars of token as cache key (fast & unique enough)
+    const cacheKey = `${cookieName}:${token.slice(-16)}`;
+    const hit = VALIDATED_CACHE.get(cacheKey);
+    if (hit && hit.exp > Date.now()) return hit.v as SessionPayload | null;
+    const payload = await verifySession(token);
+    return cachedValidate(payload, cacheKey);
+  } catch (e) { return null; }
+}
+
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<SessionPayload | null> {
+  // Use cached variant for speed on generic pages
+  const d = await getSessionFromCookieCached(DOCTOR_COOKIE);
+  if (d) return d;
+  const a = await getSessionFromCookieCached(ADMIN_COOKIE);
+  if (a) return a;
+  // legacy fallback
+  const leg = await getSessionFromCookieCached(LEGACY_COOKIE);
+  if (leg && (leg.role === 'ADMIN' || leg.role === 'SUPER_ADMIN')) return leg;
+  return null;
 });
 
 export function cookieNameForRole(role: UserRole): string {

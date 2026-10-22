@@ -1,12 +1,13 @@
 import React from 'react';
-import { getCurrentUser } from '@/lib/auth';
+import { getDoctorSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import DoctorDashboardClient from './doctor-dashboard-client';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function DoctorDashboardPage() {
-  const user = await getCurrentUser();
+  const user = await getDoctorSession();
   if (!user) return null;
 
   const targetDoctorId = user.role === 'DOCTOR' ? user.userId : user.delegatedDoctorId;

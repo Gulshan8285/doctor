@@ -1,19 +1,20 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ToastProvider } from '@/components/ui/toast';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function SuperAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const user = await getAdminSession();
 
   if (!user) {
     redirect('/login');
