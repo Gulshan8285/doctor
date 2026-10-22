@@ -22,14 +22,8 @@ export default async function DoctorLayout({
 
   const user = await getCurrentUser();
 
-  if (!user) {
-    redirect('/login');
-  }
-
-  if (user.role !== 'DOCTOR' && user.role !== 'DELEGATED_STAFF') {
-    if (user.role === 'ADMIN') redirect('/admin');
-    if (user.role === 'SUPER_ADMIN') redirect('/super-admin');
-    redirect('/login');
+  if (!user || (user.role !== 'DOCTOR' && user.role !== 'DELEGATED_STAFF')) {
+    redirect('/doctor/login');
   }
 
   // Fetch organization and notifications

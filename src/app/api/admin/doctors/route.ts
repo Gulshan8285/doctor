@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fullName, email, phone, specialization, registrationNumber } = body;
+    const { fullName, email, phone, specialization, registrationNumber, password } = body;
 
     if (!fullName || !email) {
       return NextResponse.json({ error: 'Full name and email are required' }, { status: 400 });
@@ -79,8 +79,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'An account with this email already exists' }, { status: 400 });
     }
 
-    // Default temporary password
-    const passwordHash = await hashPassword('DoctorCare@2026');
+    // Set custom password or standard demo password
+    const userPassword = password && password.trim().length >= 6 ? password.trim() : 'Healthcare@2026';
+    const passwordHash = await hashPassword(userPassword);
 
     const newDoctor = await prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
@@ -118,10 +119,27 @@ export async function POST(req: NextRequest) {
       metadata: { action: 'PROVISION_DOCTOR', email: normalizedEmail, name: fullName },
     });
 
+    try {
+      const { revalidatePath } = await import('next/cache');
+      revalidatePath('/admin');
+      revalidatePath('/admin/doctors');
+    } catch {}
+
     return NextResponse.json({
       success: true,
-      message: `Doctor account created for ${fullName}. Temporary password: DoctorCare@2026`,
-      doctor: newDoctor,
+      message: `Doctor account created for ${fullName}. Password: ${userPassword}`,
+      doctor: {
+        id: newDoctor.id,
+        fullName: newDoctor.fullName,
+        email: newDoctor.email,
+        phone: newDoctor.phone,
+        specialization: specialization?.trim() || 'General Physician',
+        status: 'ACTIVE',
+        patientCount: 0,
+        docCount: 0,
+        activeDelegates: 0,
+        subordinates: [],
+      },
     });
   } catch (error) {
     console.error('Error provisioning doctor:', error);

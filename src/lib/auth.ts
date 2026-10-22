@@ -44,12 +44,15 @@ export async function verifySession(token: string): Promise<SessionPayload | nul
   }
 }
 
+import { cache } from 'react';
+
 /**
  * Gets the verified authenticated user for the current server context.
  * Performs database check to enforce immediate access revocation for suspended accounts
  * or revoked delegated staff.
+ * Cached per request to eliminate redundant round-trips to the database.
  */
-export async function getCurrentUser(): Promise<SessionPayload | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<SessionPayload | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;
@@ -113,4 +116,4 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
     console.error('Error verifying current user:', error);
     return null;
   }
-}
+});

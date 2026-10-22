@@ -40,6 +40,16 @@ import { useToast } from '@/components/ui/toast';
 import { formatDate, formatDateTime, formatBytes } from '@/lib/utils';
 import { DIAGNOSTIC_LABS } from '@/lib/diagnostic-labs';
 
+export interface DoctorSubordinate {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: 'ACTIVE' | 'PENDING' | 'REVOKED';
+  permissions: string[];
+  createdAt: string;
+}
+
 interface DoctorItem {
   id: string;
   fullName: string;
@@ -53,6 +63,7 @@ interface DoctorItem {
   docCount: number;
   activeDelegates: number;
   createdAt: string;
+  subordinates?: DoctorSubordinate[];
 }
 
 interface PrescriptionItem {
@@ -147,6 +158,7 @@ export default function AdminDashboardClient({
     fullName: '',
     email: '',
     phone: '',
+    password: '',
     specialization: 'General Physician',
     registrationNumber: '',
   });
@@ -243,11 +255,16 @@ export default function AdminDashboardClient({
         type: 'success',
       });
 
+      if (data.doctor) {
+        setDoctorList((prev) => [data.doctor, ...prev]);
+      }
+
       setIsProvisionOpen(false);
       setProvisionForm({
         fullName: '',
         email: '',
         phone: '',
+        password: '',
         specialization: 'General Physician',
         registrationNumber: '',
       });
@@ -304,38 +321,45 @@ export default function AdminDashboardClient({
     }
   };
 
-  const handleRevokeStaffAccess = async (staff: DelegatedStaffItem) => {
-    setIsRevokingStaff(staff.id);
+  const handleRevokeStaffAccess = async (staffOrId: DelegatedStaffItem | string, staffNameOrEmail?: string) => {
+    const id = typeof staffOrId === 'string' ? staffOrId : staffOrId.id;
+    const displayName = typeof staffOrId === 'string'
+      ? (staffNameOrEmail || 'Staff Member')
+      : (staffOrId.staffUser?.fullName || staffOrId.invitedName || staffOrId.invitedEmail);
+
+    setIsRevokingStaff(id);
     // Optimistic UI update (0ms delay)
     setStaffList((prev) =>
-      prev.map((s) => (s.id === staff.id ? { ...s, status: 'REVOKED' } : s))
+      prev.map((s) => (s.id === id ? { ...s, status: 'REVOKED' } : s))
+    );
+    setDoctorList((prev) =>
+      prev.map((d) => ({
+        ...d,
+        subordinates: (d.subordinates || []).map((sub) =>
+          sub.id === id ? { ...sub, status: 'REVOKED' as const } : sub
+        ),
+      }))
     );
 
     try {
-      const res = await fetch(`/api/team?id=${staff.id}`, {
+      const res = await fetch(`/api/team?id=${id}`, {
         method: 'DELETE',
       });
 
       const data = await res.json();
       if (!res.ok) {
-        // Rollback
-        setStaffList((prev) =>
-          prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s))
-        );
         toast({ title: 'Revocation Failed', description: data.error, type: 'error' });
+        router.refresh();
         return;
       }
 
       toast({
         title: 'Staff Access Revoked',
-        description: `Subordinate access for ${staff.staffUser?.fullName || staff.invitedName} has been immediately revoked.`,
+        description: `Subordinate access for ${displayName} has been immediately revoked.`,
         type: 'success',
       });
       router.refresh();
     } catch {
-      setStaffList((prev) =>
-        prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s))
-      );
       toast({ title: 'Error', description: 'Could not connect to server', type: 'error' });
     } finally {
       setIsRevokingStaff(null);
@@ -647,6 +671,66 @@ export default function AdminDashboardClient({
                           <p className="text-sm font-bold text-purple-700">{doc.activeDelegates}/3</p>
                         </div>
                       </div>
+
+                      {/* Nested Subordinates / Junior Staff Section */}
+                      <div className="mt-4 pt-3.5 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Delegated Subordinates</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                            {(doc.subordinates || []).length}/3 Assigned
+                          </span>
+                        </div>
+
+                        {(!doc.subordinates || doc.subordinates.length === 0) ? (
+                          <div className="p-2.5 rounded-xl bg-slate-50/70 border border-dashed border-slate-200 text-center text-[11px] text-slate-400 italic">
+                            No junior staff assigned to this physician
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {doc.subordinates.map((sub) => (
+                              <div
+                                key={sub.id}
+                                className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/90 hover:border-indigo-200 transition-colors"
+                              >
+                                <div className="flex items-start justify-between gap-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-slate-900 truncate">
+                                      {sub.name}
+                                    </p>
+                                    <p className="text-[10px] font-mono text-slate-500 truncate">
+                                      {sub.email}
+                                    </p>
+                                  </div>
+                                  <Badge
+                                    variant={
+                                      sub.status === 'ACTIVE'
+                                        ? 'emerald'
+                                        : sub.status === 'PENDING'
+                                        ? 'amber'
+                                        : 'rose'
+                                    }
+                                  >
+                                    {sub.status}
+                                  </Badge>
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {sub.permissions.map((p) => (
+                                    <span
+                                      key={p}
+                                      className="text-[9px] font-medium bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-600"
+                                    >
+                                      {p.replace(/_/g, ' ')}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Card Actions */}
@@ -696,7 +780,8 @@ export default function AdminDashboardClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {doctorList.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50/70 transition-colors">
+                    <React.Fragment key={doc.id}>
+                      <tr className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3.5 px-4 font-semibold text-slate-900">
                         {doc.fullName}
                         <span className="text-[10px] text-slate-400 block font-normal">
@@ -751,6 +836,60 @@ export default function AdminDashboardClient({
                         </div>
                       </td>
                     </tr>
+                    {doc.subordinates && doc.subordinates.length > 0 && (
+                      <tr key={`${doc.id}-subs`} className="bg-indigo-50/40 border-b border-indigo-100">
+                        <td colSpan={8} className="py-2.5 px-6">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Users className="w-3.5 h-3.5 text-indigo-600" />
+                            <span className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider">
+                              Subordinate Staff under {doc.fullName}:
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {doc.subordinates.map((sub) => (
+                              <div
+                                key={sub.id}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-indigo-100 shadow-2xs text-xs"
+                              >
+                                <div className="min-w-0 flex-1 pr-2">
+                                  <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                                    <span>{sub.name}</span>
+                                    <Badge
+                                      variant={
+                                        sub.status === 'ACTIVE'
+                                          ? 'emerald'
+                                          : sub.status === 'PENDING'
+                                          ? 'amber'
+                                          : 'rose'
+                                      }
+                                    >
+                                      {sub.status}
+                                    </Badge>
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 font-mono truncate">
+                                    {sub.email}
+                                  </div>
+                                  <div className="text-[9px] text-indigo-600 font-medium mt-0.5 truncate">
+                                    {sub.permissions.join(', ')}
+                                  </div>
+                                </div>
+                                {sub.status !== 'REVOKED' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-[10px] text-rose-600 hover:bg-rose-50 px-2 py-1 h-auto cursor-pointer shrink-0"
+                                    onClick={() => handleRevokeStaffAccess(sub.id, sub.email)}
+                                  >
+                                    Revoke
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -1427,9 +1566,26 @@ export default function AdminDashboardClient({
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Custom Account Password
+            </label>
+            <input
+              type="text"
+              value={provisionForm.password}
+              onChange={(e) =>
+                setProvisionForm({ ...provisionForm, password: e.target.value })
+              }
+              placeholder="e.g. Healthcare@2026 (Leave blank for default)"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">
+              Doctor will use this email &amp; password to log in. Default is <code>Healthcare@2026</code>.
+            </p>
+          </div>
+
           <div className="p-3 bg-teal-50 rounded-lg border border-teal-100 text-xs text-teal-800">
-            A temporary password (<code>DoctorCare@2026</code>) will be set. The physician can update
-            their credentials upon initial login.
+            Account will be created instantly. The physician can log in immediately at <code>/doctor/login</code>.
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2.5">

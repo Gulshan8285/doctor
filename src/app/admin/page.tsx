@@ -38,7 +38,18 @@ export default async function AdminDashboardPage() {
           include: { preferredPharmacy: { select: { name: true } } },
         },
         delegatedAccessGranted: {
-          where: { status: 'ACTIVE' },
+          include: {
+            staffUser: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
         },
         _count: {
           select: { patientsCreated: true, doctorDocuments: true },
@@ -67,13 +78,13 @@ export default async function AdminDashboardPage() {
     prisma.auditEvent.findMany({
       where: orgFilter,
       orderBy: { createdAt: 'desc' },
-      take: 15,
+      take: 10,
       include: { user: { select: { fullName: true, role: true } } },
     }),
     prisma.prescriptionDocument.findMany({
       where: orgFilter,
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 25,
       include: {
         patient: { select: { fullName: true, patientCode: true } },
         doctor: { select: { fullName: true } },
@@ -101,8 +112,25 @@ export default async function AdminDashboardPage() {
         preferredPharmacy: d.doctorProfile?.preferredPharmacy?.name || 'None Selected',
         patientCount: d._count.patientsCreated,
         docCount: d._count.doctorDocuments,
-        activeDelegates: d.delegatedAccessGranted.length,
+        activeDelegates: d.delegatedAccessGranted.filter((da) => da.status === 'ACTIVE').length,
         createdAt: d.createdAt.toISOString(),
+        subordinates: d.delegatedAccessGranted.map((da) => {
+          let perms: string[] = [];
+          try {
+            perms = JSON.parse(da.permissions || '[]');
+          } catch {
+            perms = [];
+          }
+          return {
+            id: da.id,
+            name: da.staffUser?.fullName || da.invitedName || 'Assistant',
+            email: da.staffUser?.email || da.invitedEmail,
+            phone: da.staffUser?.phone || null,
+            status: da.status,
+            permissions: perms,
+            createdAt: da.createdAt.toISOString(),
+          };
+        }),
       }))}
       delegatedStaff={delegatedStaffList.map((d) => ({
         id: d.id,

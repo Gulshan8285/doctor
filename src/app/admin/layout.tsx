@@ -22,12 +22,8 @@ export default async function AdminLayout({
 
   const user = await getCurrentUser();
 
-  if (!user) {
-    redirect('/login');
-  }
-
-  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-    redirect('/doctor');
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    redirect('/admin/login');
   }
 
   const org = user.organizationId
